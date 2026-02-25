@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>Notifications</h2>
+    <form method="post" action="/activity/notifications/mark-all-read/">
+      {% csrf_token %}
+      <button type="submit">Mark all read</button>
+    </form>
+    <ul>
+      {% for n in notifications %}
+        <li>{% if not n.read %}<strong>{% endif %}{{ n.message }}{% if not n.read %}</strong>{% endif %} <span class="muted">{{ n.created_at }}</span></li>
+      {% empty %}
+        <li>No notifications yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}
+

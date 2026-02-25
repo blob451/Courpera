@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     "accounts",
     "courses",
     "materials",
-    "activity",
+    "activity.apps.ActivityConfig",
     "messaging",
     "ui",
     "api",

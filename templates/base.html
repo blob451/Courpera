@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}Courpera{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="/favicon.ico">
     <style>
       /* Minimal, readable defaults (accessible contrast) */
       :root { --bg: #ffffff; --fg: #111827; --muted: #374151; --accent: #0056D2; --card: #F3F4F6; }
@@ -27,10 +29,22 @@
     <a class="sr-only" href="#main">Skip to content</a>
     <header role="banner">
       <h1><a href="/">Courpera</a></h1>
-      <nav aria-label="Primary">
+      <nav aria-label="Primary" style="position:relative">
         {% if request.user.is_authenticated %}
           <a href="/accounts/home/">Home</a>
           <a href="/courses/">Courses</a>
+          <button id="notifBtn" class="link-btn" type="button">Notifications <span id="notifBadge" class="muted"></span></button>
+          <div id="notifPanel" style="display:none; position:absolute; background:#fff; border:1px solid #ddd; padding:.5rem; border-radius:6px; max-width:360px; z-index:1000; right:0;">
+            <strong>Recent</strong>
+            <ul id="notifList" style="margin:.5rem 0; padding-left:1rem"></ul>
+            <div>
+              <form method="post" action="/activity/notifications/mark-all-read/">
+                {% csrf_token %}
+                <button type="submit" class="link-btn">Mark all read</button>
+                <a href="/activity/notifications/">View all</a>
+              </form>
+            </div>
+          </div>
           <form method="post" action="/accounts/logout/" style="display:inline">
             {% csrf_token %}
             <button type="submit" class="link-btn">Sign out</button>
@@ -57,6 +71,40 @@
     <main id="main" role="main">
       {% block content %}{% endblock %}
     </main>
+  <script>
+    (function(){
+      var btn = document.getElementById('notifBtn');
+      var panel = document.getElementById('notifPanel');
+      var list = document.getElementById('notifList');
+      var badge = document.getElementById('notifBadge');
+      if(!btn || !panel) return;
+      function fetchRecent(){
+        fetch('/activity/notifications/recent/')
+          .then(function(r){ return r.ok ? r.json() : {unread:0,results:[]}; })
+          .then(function(d){
+            badge.textContent = d.unread ? '(' + d.unread + ')' : '';
+            list.innerHTML = '';
+            (d.results || []).forEach(function(n){
+              var li = document.createElement('li');
+              li.textContent = n.message;
+              list.appendChild(li);
+            });
+            if((d.results||[]).length === 0){
+              var li = document.createElement('li'); li.textContent = 'No notifications'; list.appendChild(li);
+            }
+          })
+          .catch(function(){});
+      }
+      btn.addEventListener('click', function(){
+        var show = panel.style.display === 'none';
+        panel.style.display = show ? 'block' : 'none';
+        if(show){ fetchRecent(); }
+      });
+      document.addEventListener('click', function(e){
+        if(!panel.contains(e.target) && e.target !== btn){ panel.style.display='none'; }
+      });
+    })();
+  </script>
   </body>
   <!-- Stage 1: keep markup simple and semantic; more structure follows -->
 </html>
