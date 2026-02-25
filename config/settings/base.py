@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     # Local apps
+    "accounts",
     "ui",
     "api",
 ]
@@ -134,3 +135,8 @@ else:
     CHANNEL_LAYERS = {
         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
+
+# Authentication redirects (used by Django auth views)
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/accounts/home/"
+LOGOUT_REDIRECT_URL = "/"

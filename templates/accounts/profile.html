@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>Edit Profile</h2>
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="kv">
+        <label for="id_full_name">Full name</label>
+        {{ form.full_name }}
+        <label for="id_phone">Phone</label>
+        {{ form.phone }}
+        <label for="id_student_number">Student number</label>
+        {{ form.student_number }}
+        <label for="id_role">Role</label>
+        {{ form.role }}
+      </div>
+      <button type="submit">Save changes</button>
+      <a href="/accounts/home/">Cancel</a>
+    </form>
+  </section>
+{% endblock %}
+

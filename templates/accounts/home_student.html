@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Student Home — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>Student Home</h2>
+    <p>Welcome, {{ request.user.username }}. This area is restricted to students.</p>
+    <ul>
+      <li><a href="/accounts/profile/">Edit profile</a></li>
+      <li><a href="/docs/">API docs</a></li>
+    </ul>
+  </section>
+{% endblock %}
+

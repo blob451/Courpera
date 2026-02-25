@@ -25,7 +25,19 @@
     <a class="sr-only" href="#main">Skip to content</a>
     <header role="banner">
       <h1><a href="/">Courpera</a></h1>
-      </header>
+      <nav aria-label="Primary">
+        {% if request.user.is_authenticated %}
+          <a href="/accounts/home/">Home</a>
+          <form method="post" action="/accounts/logout/" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" style="background:none;border:0;color:var(--accent);cursor:pointer;padding:0">Sign out</button>
+          </form>
+        {% else %}
+          <a href="/accounts/login/">Sign in</a>
+          <a href="/accounts/register/">Register</a>
+        {% endif %}
+      </nav>
+    </header>
     <main id="main" role="main">
       {% block content %}{% endblock %}
     </main>

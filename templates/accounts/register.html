@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Register — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>Create an account</h2>
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="kv">
+        <label for="id_username">Username</label>
+        {{ form.username }}
+        <label for="id_email">Email</label>
+        {{ form.email }}
+        <label for="id_role">Role</label>
+        {{ form.role }}
+        <label for="id_password1">Password</label>
+        {{ form.password1 }}
+        <label for="id_password2">Confirm password</label>
+        {{ form.password2 }}
+      </div>
+      <button type="submit">Register</button>
+      <p class="muted">Already have an account? <a href="/accounts/login/">Sign in</a>.</p>
+    </form>
+  </section>
+{% endblock %}
+
