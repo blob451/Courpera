@@ -63,6 +63,49 @@
     </script>
     {% endif %}
   </section>
+  <section class="panel">
+    <h3>Course chat</h3>
+    <div id="chat-log" style="max-height:220px;overflow:auto;border:1px solid #ddd;padding:.5rem;background:#fff"></div>
+    <form id="chat-form">
+      <label class="sr-only" for="chat-input">Message</label>
+      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message…" style="width:80%" />
+      <button type="submit">Send</button>
+    </form>
+    <script>
+      (function(){
+        var log = document.getElementById('chat-log');
+        var form = document.getElementById('chat-form');
+        var input = document.getElementById('chat-input');
+        function add(msg){
+          var d = document.createElement('div');
+          d.textContent = msg;
+          log.appendChild(d);
+          log.scrollTop = log.scrollHeight;
+        }
+        // Load recent history
+        try {
+          fetch('/messaging/course/{{ course.id }}/history/')
+            .then(function(r){return r.ok ? r.json() : {results:[]};})
+            .then(function(data){
+              (data.results || []).forEach(function(m){ add((m.sender || 'anon') + ': ' + m.message); });
+            })
+            .catch(function(){});
+        } catch(e){}
+        var scheme = (location.protocol === 'https:') ? 'wss' : 'ws';
+        var ws = new WebSocket(scheme + '://' + location.host + '/ws/chat/course/{{ course.id }}/');
+        ws.onmessage = function(ev){
+          try{ var data = JSON.parse(ev.data); add((data.sender || 'anon') + ': ' + data.message); }catch(e){}
+        };
+        form.addEventListener('submit', function(e){
+          e.preventDefault();
+          var txt = (input.value || '').trim();
+          if(!txt) return;
+          ws.send(JSON.stringify({message: txt}));
+          input.value='';
+        });
+      })();
+    </script>
+  </section>
   {% endif %}
 
   {% if owner_view %}

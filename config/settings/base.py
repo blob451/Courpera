@@ -24,8 +24,10 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "daphne",
     "django.contrib.staticfiles",
-    # Third-party apps (API + docs)
+    # Third-party apps (API, docs, and Channels runtime)
+    "channels",
     "rest_framework",
     "django_filters",
     "drf_spectacular",
@@ -34,6 +36,7 @@ INSTALLED_APPS = [
     "courses",
     "materials",
     "activity",
+    "messaging",
     "ui",
     "api",
 ]
