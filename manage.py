@@ -16,7 +16,8 @@ def main() -> None:
     In development, we default to `config.settings` until the settings
     split is introduced in the next stage.
     """
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    # Default to development settings; production overrides with env var.
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -29,4 +30,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -51,6 +51,9 @@ coverage.xml
  
 # Ignore project-local meta docs folder
 gitignore/
+
+# Local virtual environment
+.venv/
 .pytest_cache/
 cover/
 

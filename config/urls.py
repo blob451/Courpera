@@ -10,5 +10,6 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("ui.urls")),  # public index
+    # API schema and docs
+    path("", include("api.urls")),
 ]
-
