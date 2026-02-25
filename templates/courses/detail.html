@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ course.title }} — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>{{ course.title }}</h2>
+    {% if course.description %}
+      <p>{{ course.description }}</p>
+    {% endif %}
+    <p class="muted">Teacher: {{ course.owner.username }}</p>
+    {% if owner_view %}
+      <p><a href="/courses/{{ course.id }}/edit/">Edit course</a></p>
+    {% endif %}
+  </section>
+
+  {% if owner_view %}
+  <section class="panel">
+    <h3>Roster</h3>
+    <p class="muted">Teacher-only view. Remove students as needed.</p>
+    <ul>
+      {% for e in roster %}
+        <li>
+          {{ e.student.username }}
+          <form method="post" action="/courses/{{ course.id }}/remove/{{ e.student.id }}/" style="display:inline">
+            {% csrf_token %}
+            <button type="submit">Remove</button>
+          </form>
+        </li>
+      {% empty %}
+        <li>No students enrolled yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section class="panel">
+    <h3>Add student</h3>
+    <form method="post" action="/courses/{{ course.id }}/add-student/">
+      {% csrf_token %}
+      <div class="kv">
+        <label for="id_query">Username or e‑mail</label>
+        {{ add_form.query }}
+      </div>
+      <button type="submit" name="action" value="search">Search</button>
+    </form>
+    {% if searched and search_results|length == 0 %}
+      <script>try{ alert('No users found'); }catch(e){/*no-op*/}</script>
+    {% endif %}
+    {% if search_results %}
+      <h4>Search results</h4>
+      <ul>
+        {% for u in search_results %}
+          <li>
+            {{ u.username }}{% if u.email %} <span class="muted">({{ u.email }})</span>{% endif %}
+            <form method="post" action="/courses/{{ course.id }}/add-student/" style="display:inline">
+              {% csrf_token %}
+              <input type="hidden" name="query" value="{{ u.username }}">
+              <button type="submit" name="action" value="enrol">Enrol</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if not owner_view and is_enrolled %}
+  <section class="panel">
+    <h3>Course actions</h3>
+    <form method="post" action="/courses/{{ course.id }}/unenrol/">
+      {% csrf_token %}
+      <button type="submit">Unenrol from course</button>
+    </form>
+  </section>
+  {% endif %}
+{% endblock %}

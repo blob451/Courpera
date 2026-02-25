@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local apps
     "accounts",
+    "courses",
     "ui",
     "api",
 ]
