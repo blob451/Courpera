@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Courpera{% endblock %}</title>
+    <style>
+      /* Minimal, readable defaults for Stage 1 */
+      :root { --bg: #ffffff; --fg: #111827; --accent: #0056D2; }
+      html { -webkit-text-size-adjust: 100%; }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); }
+      header, main { max-width: 960px; margin: 0 auto; padding: 1.25rem; }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><a href="/">Courpera</a></h1>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+  <!-- Stage 1: keep markup simple and semantic; more structure follows -->
+</html>
+
