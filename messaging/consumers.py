@@ -39,6 +39,8 @@ class CourseChatConsumer(AsyncJsonWebsocketConsumer):
             return
         self.course = course
         self.room_name = f"course_{self.course_id}"
+        # Simple per-connection rate limiter: max 5 messages per 5 seconds
+        self._rate_ts = []
         await self.channel_layer.group_add(self.room_name, self.channel_name)
         await self.accept()
 
@@ -46,6 +48,17 @@ class CourseChatConsumer(AsyncJsonWebsocketConsumer):
         msg = (content or {}).get("message", "").strip()
         if not msg:
             return
+        # Enforce basic per-connection rate limiting to reduce spam
+        try:
+            import time
+            now = time.time()
+            self._rate_ts = [t for t in self._rate_ts if now - t < 5.0]
+            if len(self._rate_ts) >= 5:
+                # Drop message silently to avoid feedback loops
+                return
+            self._rate_ts.append(now)
+        except Exception:
+            pass
         await _persist_message(self.room_name, self.course, self.scope.get("user"), msg)
         payload = {
             "type": "chat.message",

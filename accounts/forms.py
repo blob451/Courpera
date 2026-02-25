@@ -16,7 +16,7 @@ class RegistrationForm(UserCreationForm):
     model in early stages.
     """
 
-    email = forms.EmailField(required=False)
+    email = forms.EmailField(required=True)
     role = forms.ChoiceField(choices=Role.choices, initial=Role.STUDENT)
 
     class Meta:
@@ -31,6 +31,20 @@ class RegistrationForm(UserCreationForm):
         profile.save(update_fields=["role"])  # explicit for clarity
         return user
 
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if not email:
+            raise forms.ValidationError("E-mail is required.")
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this e-mail already exists.")
+        return email
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("This username is already taken.")
+        return username
+
 
 class ProfileForm(forms.ModelForm):
     """Simple form to edit profile contact fields and role."""
@@ -38,4 +52,3 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ("full_name", "phone", "student_number", "role")
-

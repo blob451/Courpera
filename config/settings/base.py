@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.ContentSecurityPolicyMiddleware",
     # WhiteNoise will be enabled in production; keep ordering stable now
     # "whitenoise.middleware.WhiteNoiseMiddleware",  # enabled in prod.py
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -168,3 +169,20 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 AVATAR_BASE_URL = os.environ.get("AVATAR_BASE_URL", "https://api.dicebear.com/7.x")
 AVATAR_STYLE = os.environ.get("AVATAR_STYLE", "initials")
 AVATAR_SEED_SALT = os.environ.get("AVATAR_SEED_SALT", "courpera-salt")
+
+# Password policy
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "accounts.validators.PasswordComplexityValidator"},
+]
+# Prefer Argon2 for password hashing when available.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]

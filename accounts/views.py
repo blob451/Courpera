@@ -21,6 +21,21 @@ from activity.models import Status
 class CourperaLoginView(LoginView):
     template_name = "registration/login.html"
 
+    def post(self, request: HttpRequest, *args, **kwargs):
+        # Simple per-session login throttle: max 10 attempts/min to reduce brute force
+        try:
+            ts = request.session.get("login_ts", [])
+            now = __import__("time").time()
+            ts = [t for t in ts if now - t < 60]
+            if len(ts) >= 10:
+                messages.error(request, "Too many login attempts. Please wait a minute and try again.")
+                return self.get(request, *args, **kwargs)
+            ts.append(now)
+            request.session["login_ts"] = ts
+        except Exception:
+            pass
+        return super().post(request, *args, **kwargs)
+
 
 class CourperaLogoutView(LogoutView):
     next_page = "/"
