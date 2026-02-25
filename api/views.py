@@ -1,0 +1,173 @@
+"""REST API v1 viewsets and endpoints (Stage 8)."""
+from __future__ import annotations
+
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+from rest_framework import viewsets, mixins, status
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+from accounts.models import UserProfile
+from courses.models import Course, Enrolment
+from courses.models_feedback import Feedback
+from materials.models import Material
+from activity.models import Status
+from .serializers import (
+    UserSerializer,
+    CourseSerializer,
+    EnrolmentSerializer,
+    MaterialSerializer,
+    FeedbackSerializer,
+    StatusSerializer,
+)
+from .permissions import IsAuthenticatedOrReadOnly, IsTeacher, IsStudent
+
+User = get_user_model()
+
+
+def _is_owner(user, course: Course) -> bool:
+    return bool(user and user.is_authenticated and course.owner_id == user.id)
+
+
+def _is_enrolled(user, course: Course) -> bool:
+    if not getattr(user, "is_authenticated", False):
+        return False
+    return Enrolment.objects.filter(course=course, student=user).exists()
+
+
+class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = User.objects.all().select_related("profile").order_by("username")
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = Course.objects.select_related("owner").all()
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        # Only teachers can create courses; owner is current user
+        profile = getattr(self.request.user, "profile", None)
+        if getattr(profile, "role", None) != "teacher":
+            return Response({"detail": "Only teachers can create courses."}, status=status.HTTP_403_FORBIDDEN)
+        serializer.save(owner=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        course = self.get_object()
+        if not (_is_owner(request.user, course) or _is_enrolled(request.user, course)):
+            return Response({"detail": "Enrol to access this course."}, status=status.HTTP_403_FORBIDDEN)
+        return super().retrieve(request, *args, **kwargs)
+
+
+class EnrolmentViewSet(viewsets.ModelViewSet):
+    serializer_class = EnrolmentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        # Students: own enrolments; Teachers: enrolments to their courses
+        user = self.request.user
+        if not user.is_authenticated:
+            return Enrolment.objects.none()
+        role = getattr(getattr(user, "profile", None), "role", None)
+        if role == "student":
+            return Enrolment.objects.filter(student=user).select_related("course", "student")
+        if role == "teacher":
+            return Enrolment.objects.filter(course__owner=user).select_related("course", "student")
+        return Enrolment.objects.none()
+
+    def perform_create(self, serializer):
+        # Student self-enrol only
+        profile = getattr(self.request.user, "profile", None)
+        if getattr(profile, "role", None) != "student":
+            raise PermissionError("Only students can enrol.")
+        serializer.save(student=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        # Student can unenrol self; teacher owner can remove any from own course
+        instance = self.get_object()
+        user = request.user
+        if instance.student_id == user.id:
+            return super().destroy(request, *args, **kwargs)
+        if _is_owner(user, instance.course):
+            return super().destroy(request, *args, **kwargs)
+        return Response({"detail": "Not permitted."}, status=status.HTTP_403_FORBIDDEN)
+
+
+class MaterialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = MaterialSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        # Owner or enrolled can see materials; otherwise none
+        user = self.request.user
+        qs = Material.objects.select_related("course").all()
+        if not user.is_authenticated:
+            return Material.objects.none()
+        # Owners can see their course materials; students see where enrolled
+        return qs.filter(Q(course__owner=user) | Q(course__enrolments__student=user)).distinct()
+
+
+class FeedbackViewSet(viewsets.ModelViewSet):
+    serializer_class = FeedbackSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        course_id = self.request.query_params.get("course")
+        qs = Feedback.objects.select_related("course", "student")
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs.order_by("-created_at")
+
+    def perform_create(self, serializer):
+        # Only enrolled students may create feedback
+        user = self.request.user
+        course = serializer.validated_data.get("course")
+        if not user.is_authenticated:
+            raise PermissionError("Authentication required.")
+        if getattr(getattr(user, "profile", None), "role", None) != "student":
+            raise PermissionError("Only students can leave feedback.")
+        if not Enrolment.objects.filter(course=course, student=user).exists():
+            raise PermissionError("Enrol before leaving feedback.")
+        serializer.save(student=user)
+
+    def perform_update(self, serializer):
+        # Students may update their own feedback only
+        instance = self.get_object()
+        if instance.student_id != self.request.user.id:
+            raise PermissionError("Cannot edit others' feedback.")
+        serializer.save()
+
+
+class StatusViewSet(viewsets.ModelViewSet):
+    serializer_class = StatusSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Status.objects.none()
+        # Students: own updates; teachers: none for now (could extend later)
+        role = getattr(getattr(user, "profile", None), "role", None)
+        if role == "student":
+            return Status.objects.filter(user=user).order_by("-created_at")
+        return Status.objects.none()
+
+    def perform_create(self, serializer):
+        if getattr(getattr(self.request.user, "profile", None), "role", None) != "student":
+            raise PermissionError("Only students can post status updates.")
+        serializer.save(user=self.request.user)
+
+
+@api_view(["GET"])
+@permission_classes([IsTeacher])
+def search_users(request):
+    """Teacher-only search for users by username or email (partial, case-insensitive)."""
+    q = request.query_params.get("q", "").strip()
+    qs = User.objects.select_related("profile").none()
+    if q:
+        qs = User.objects.select_related("profile").filter(Q(username__icontains=q) | Q(email__icontains=q)).order_by("username")[:50]
+    data = UserSerializer(qs, many=True).data
+    return Response({"count": len(data), "results": data})
+
