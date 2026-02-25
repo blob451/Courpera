@@ -40,12 +40,16 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
     queryset = User.objects.all().select_related("profile").order_by("username")
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    search_fields = ["username", "email"]
+    ordering_fields = ["username", "id"]
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.select_related("owner").all()
     serializer_class = CourseSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    search_fields = ["title", "description", "owner__username"]
+    ordering_fields = ["created_at", "updated_at", "title"]
 
     def perform_create(self, serializer):
         # Only teachers can create courses; owner is current user
@@ -71,11 +75,17 @@ class EnrolmentViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Enrolment.objects.none()
         role = getattr(getattr(user, "profile", None), "role", None)
+        base = Enrolment.objects.select_related("course", "student")
+        course_id = self.request.query_params.get("course")
         if role == "student":
-            return Enrolment.objects.filter(student=user).select_related("course", "student")
-        if role == "teacher":
-            return Enrolment.objects.filter(course__owner=user).select_related("course", "student")
-        return Enrolment.objects.none()
+            qs = base.filter(student=user)
+        elif role == "teacher":
+            qs = base.filter(course__owner=user)
+        else:
+            qs = Enrolment.objects.none()
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs
 
     def perform_create(self, serializer):
         # Student self-enrol only
@@ -106,12 +116,17 @@ class MaterialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
         if not user.is_authenticated:
             return Material.objects.none()
         # Owners can see their course materials; students see where enrolled
-        return qs.filter(Q(course__owner=user) | Q(course__enrolments__student=user)).distinct()
+        qs = qs.filter(Q(course__owner=user) | Q(course__enrolments__student=user)).distinct()
+        course_id = self.request.query_params.get("course")
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs
 
 
 class FeedbackViewSet(viewsets.ModelViewSet):
     serializer_class = FeedbackSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    ordering_fields = ["created_at", "rating"]
 
     def get_queryset(self):
         course_id = self.request.query_params.get("course")
@@ -143,6 +158,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 class StatusViewSet(viewsets.ModelViewSet):
     serializer_class = StatusSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    ordering_fields = ["created_at", "id"]
 
     def get_queryset(self):
         user = self.request.user
@@ -170,4 +186,3 @@ def search_users(request):
         qs = User.objects.select_related("profile").filter(Q(username__icontains=q) | Q(email__icontains=q)).order_by("username")[:50]
     data = UserSerializer(qs, many=True).data
     return Response({"count": len(data), "results": data})
-
