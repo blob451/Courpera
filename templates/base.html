@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}Courpera{% endblock %}</title>
     <style>
-      /* Minimal, readable defaults for Stage 1 */
-      :root { --bg: #ffffff; --fg: #111827; --accent: #0056D2; }
+      /* Minimal, readable defaults (accessible contrast) */
+      :root { --bg: #ffffff; --fg: #111827; --muted: #374151; --accent: #0056D2; --card: #F3F4F6; }
       html { -webkit-text-size-adjust: 100%; }
-      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.5; }
       header, main { max-width: 960px; margin: 0 auto; padding: 1.25rem; }
       a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      a:hover, a:focus { text-decoration: underline; }
+      .muted { color: var(--muted); }
+      .panel { background: var(--card); border-radius: 8px; padding: 1rem 1.25rem; }
+      .grid { display: grid; gap: 1rem; }
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+      .kv { display: grid; grid-template-columns: 160px 1fr; gap: .25rem .75rem; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     </style>
   </head>
   <body>
-    <header>
+    <a class="sr-only" href="#main">Skip to content</a>
+    <header role="banner">
       <h1><a href="/">Courpera</a></h1>
-    </header>
-    <main>
+      </header>
+    <main id="main" role="main">
       {% block content %}{% endblock %}
     </main>
   </body>
   <!-- Stage 1: keep markup simple and semantic; more structure follows -->
 </html>
-

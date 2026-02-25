@@ -8,5 +8,35 @@
       Additional pages and features are introduced progressively in later stages.
     </p>
   </section>
-{% endblock %}
 
+  {% if admin_mode %}
+  <section class="panel" aria-label="Environment details and quick links">
+    <h2>Environment</h2>
+    {% if runinfo %}
+    <div class="kv">
+      <div class="muted">OS</div><div>{{ runinfo.os }}</div>
+      <div class="muted">Python</div><div>{{ runinfo.python }}</div>
+      <div class="muted">Django</div><div>{{ runinfo.django }}</div>
+      <div class="muted">DRF</div><div>{{ runinfo.drf|default:"—" }}</div>
+    </div>
+    {% endif %}
+
+    <h3>Admin</h3>
+    <p>
+      <a href="/admin/">Django Admin</a>
+      {% if admin_user and admin_pass %}
+        — Username: <code>{{ admin_user }}</code> Password: <code>{{ admin_pass }}</code>
+      {% else %}
+        — Set <code>ADMIN_USERNAME</code>/<code>ADMIN_PASSWORD</code> to show credentials here.
+      {% endif %}
+    </p>
+
+    <h3>API Docs</h3>
+    <ul>
+      <li><a href="/docs/">Swagger UI</a></li>
+      <li><a href="/redoc/">Redoc</a></li>
+      <li><a href="/api/schema/">OpenAPI Schema</a></li>
+    </ul>
+  </section>
+  {% endif %}
+{% endblock %}
