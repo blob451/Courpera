@@ -21,6 +21,16 @@ def upload_for_course(request: HttpRequest, course_id: int) -> HttpResponse:
     if not course.is_owner(request.user):
         raise PermissionDenied
     if request.method == "POST":
+        # Naive per-session upload throttle: max 5 uploads per minute
+        try:
+            ts = request.session.get("upload_ts", [])
+            now = __import__("time").time()
+            ts = [t for t in ts if now - t < 60]
+            if len(ts) >= 5:
+                messages.error(request, "Too many uploads, please wait a minute and try again.")
+                return redirect("courses:detail", pk=course.pk)
+        except Exception:
+            ts = []
         form = MaterialUploadForm(request.POST, request.FILES)
         if form.is_valid():
             m = form.save(commit=False)
@@ -28,6 +38,12 @@ def upload_for_course(request: HttpRequest, course_id: int) -> HttpResponse:
             m.uploaded_by = request.user
             m.save()
             messages.success(request, "Material uploaded.")
+            # record timestamp
+            try:
+                ts.append(now)
+                request.session["upload_ts"] = ts
+            except Exception:
+                pass
         else:
             messages.error(request, "; ".join([str(e) for e in form.errors.get("file", [])]) or "Upload failed.")
     return redirect("courses:detail", pk=course.pk)
@@ -45,4 +61,3 @@ def delete_material(request: HttpRequest, pk: int) -> HttpResponse:
         messages.success(request, "Material deleted.")
         return redirect("courses:detail", pk=course_id)
     return redirect("courses:list")
-

@@ -4,6 +4,7 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import viewsets, mixins, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -55,7 +56,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         # Only teachers can create courses; owner is current user
         profile = getattr(self.request.user, "profile", None)
         if getattr(profile, "role", None) != "teacher":
-            return Response({"detail": "Only teachers can create courses."}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only teachers can create courses.")
         serializer.save(owner=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
@@ -91,7 +92,7 @@ class EnrolmentViewSet(viewsets.ModelViewSet):
         # Student self-enrol only
         profile = getattr(self.request.user, "profile", None)
         if getattr(profile, "role", None) != "student":
-            raise PermissionError("Only students can enrol.")
+            raise PermissionDenied("Only students can enrol.")
         serializer.save(student=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
@@ -140,18 +141,18 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         user = self.request.user
         course = serializer.validated_data.get("course")
         if not user.is_authenticated:
-            raise PermissionError("Authentication required.")
+            raise PermissionDenied("Authentication required.")
         if getattr(getattr(user, "profile", None), "role", None) != "student":
-            raise PermissionError("Only students can leave feedback.")
+            raise PermissionDenied("Only students can leave feedback.")
         if not Enrolment.objects.filter(course=course, student=user).exists():
-            raise PermissionError("Enrol before leaving feedback.")
+            raise PermissionDenied("Enrol before leaving feedback.")
         serializer.save(student=user)
 
     def perform_update(self, serializer):
         # Students may update their own feedback only
         instance = self.get_object()
         if instance.student_id != self.request.user.id:
-            raise PermissionError("Cannot edit others' feedback.")
+            raise PermissionDenied("Cannot edit others' feedback.")
         serializer.save()
 
 
@@ -172,7 +173,7 @@ class StatusViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if getattr(getattr(self.request.user, "profile", None), "role", None) != "student":
-            raise PermissionError("Only students can post status updates.")
+            raise PermissionDenied("Only students can post status updates.")
         serializer.save(user=self.request.user)
 
 
