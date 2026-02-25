@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.db.models import Q
+from django.contrib.auth.models import User
 from django.urls import reverse
 
 from .decorators import role_required
@@ -69,6 +71,21 @@ def home_student(request: HttpRequest) -> HttpResponse:
     updates = Status.objects.filter(user=request.user)[:20]
     form = StatusForm()
     return render(request, "accounts/home_student.html", {"updates": updates, "status_form": form})
+
+
+@login_required
+@role_required(Role.TEACHER)
+def search_users(request: HttpRequest) -> HttpResponse:
+    """Teacher-only user search by username or e-mail (partial, case-insensitive)."""
+    q = (request.GET.get("q") or "").strip()
+    results = []
+    if q:
+        results = (
+            User.objects.select_related("profile")
+            .filter(Q(username__icontains=q) | Q(email__icontains=q))
+            .order_by("username")[:50]
+        )
+    return render(request, "accounts/search.html", {"q": q, "results": results})
 
 
 @login_required

@@ -8,6 +8,7 @@ from .views import (
     home_teacher,
     home_student,
     profile_edit,
+    search_users,
 )
 
 app_name = "accounts"
@@ -20,5 +21,5 @@ urlpatterns = [
     path("home/teacher/", home_teacher, name="home-teacher"),
     path("home/student/", home_student, name="home-student"),
     path("profile/", profile_edit, name="profile"),
+    path("search/", search_users, name="search"),
 ]
-
