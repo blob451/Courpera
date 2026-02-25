@@ -46,7 +46,7 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-    queryset = Course.objects.select_related("owner").all()
+    queryset = Course.objects.select_related("owner", "owner__profile").all()
     serializer_class = CourseSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     search_fields = ["title", "description", "owner__username"]
@@ -76,7 +76,13 @@ class EnrolmentViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Enrolment.objects.none()
         role = getattr(getattr(user, "profile", None), "role", None)
-        base = Enrolment.objects.select_related("course", "student")
+        base = Enrolment.objects.select_related(
+            "course",
+            "course__owner",
+            "course__owner__profile",
+            "student",
+            "student__profile",
+        )
         course_id = self.request.query_params.get("course")
         if role == "student":
             qs = base.filter(student=user)

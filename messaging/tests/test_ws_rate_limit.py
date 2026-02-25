@@ -3,25 +3,33 @@ from __future__ import annotations
 import asyncio
 import pytest
 from channels.testing import WebsocketCommunicator
+from channels.db import database_sync_to_async
 from django.test import Client
 from django.contrib.auth.models import User
 from courses.models import Course, Enrolment
 from config.asgi import application
 
 
-@pytest.mark.asyncio
-@pytest.mark.django_db(transaction=True)
-async def test_ws_rate_limit_allows_up_to_five_messages(event_loop):
+@database_sync_to_async
+def _setup_teacher_and_session():
     teacher = User.objects.create_user(username="tWS", password="pw")
+    # Mark teacher role
+    teacher.profile.role = "teacher"
+    teacher.profile.save(update_fields=["role"])
     course = Course.objects.create(owner=teacher, title="WS", description="")
-
-    # Login via Django test client to get session cookie for AuthMiddlewareStack
     client = Client()
     assert client.login(username="tWS", password="pw")
     sessionid = client.cookies.get("sessionid").value
+    return course.id, sessionid
+
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
+async def test_ws_rate_limit_allows_up_to_five_messages():
+    course_id, sessionid = await _setup_teacher_and_session()
     headers = [(b"cookie", f"sessionid={sessionid}".encode())]
 
-    communicator = WebsocketCommunicator(application, f"/ws/chat/course/{course.id}/", headers=headers)
+    communicator = WebsocketCommunicator(application, f"/ws/chat/course/{course_id}/", headers=headers)
     connected, _ = await communicator.connect()
     assert connected
 
@@ -44,4 +52,3 @@ async def test_ws_rate_limit_allows_up_to_five_messages(event_loop):
     await communicator.disconnect()
     # Expect at most 5 within the 5-second window
     assert len(received) <= 5
-

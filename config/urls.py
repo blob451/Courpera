@@ -5,13 +5,14 @@ will be added in subsequent stages.
 """
 from django.contrib import admin
 from django.urls import include, path
-from django.http import HttpResponse, HttpResponsePermanentRedirect
+from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
 
 
-def _favicon(request):  # redirect to static SVG favicon to avoid 404s
-    return HttpResponsePermanentRedirect("/static/favicon.svg")
+def _favicon(request):  # inline SVG favicon to avoid 404s in tests/dev
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0056D2"/></svg>'
+    return HttpResponse(svg, content_type="image/svg+xml")
 
 
 urlpatterns = [
