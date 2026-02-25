@@ -12,6 +12,66 @@
     {% endif %}
   </section>
 
+  <section class="panel">
+    <h3>Materials</h3>
+    <ul>
+      {% for m in course.materials.all %}
+        <li>
+          <a href="{{ m.file.url }}" target="_blank" rel="noopener noreferrer">{{ m.title }}</a>
+          <span class="muted">({{ m.size_bytes }} bytes)</span>
+          {% if owner_view %}
+          <form method="post" action="/materials/{{ m.id }}/delete/" style="display:inline">
+            {% csrf_token %}
+            <button type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li>No materials yet.</li>
+      {% endfor %}
+    </ul>
+    {% if owner_view %}
+    <form method="post" action="/materials/course/{{ course.id }}/upload/" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="kv">
+        <label for="id_title">Title</label>
+        <input type="text" name="title" id="id_title" maxlength="200" required />
+        <label for="id_file">File (PDF/JPEG/PNG/WEBP, ≤25 MB)</label>
+        <input type="file" name="file" id="id_file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
+      </div>
+      <button type="submit">Upload</button>
+    </form>
+    {% if messages %}
+      <script>
+        try {
+          {% for message in messages %}
+            {% if 'error' in message.tags %}
+              alert('{{ message|escapejs }}');
+            {% endif %}
+          {% endfor %}
+        } catch (e) { /* no-op */ }
+      </script>
+    {% endif %}
+    <script>
+      (function(){
+        var fi = document.getElementById('id_file');
+        var ti = document.getElementById('id_title');
+        if (fi && ti) {
+          fi.addEventListener('change', function(){
+            try {
+              if (!ti.value && fi.files && fi.files[0] && fi.files[0].name) {
+                var n = fi.files[0].name;
+                var base = n.replace(/\.[^.]+$/, '');
+                ti.value = base;
+              }
+            } catch (e) { /* no-op */ }
+          });
+        }
+      })();
+    </script>
+    {% endif %}
+  </section>
+
   {% if owner_view %}
   <section class="panel">
     <h3>Roster</h3>

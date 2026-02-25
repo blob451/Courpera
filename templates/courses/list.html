@@ -3,6 +3,13 @@
 {% block content %}
   <section class="panel">
     <h2>Courses</h2>
+    {% if messages %}
+      <ul>
+        {% for message in messages %}
+          <li class="muted">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
     {% if request.user.is_authenticated and role == 'teacher' %}
       <p><a href="/courses/create/">Create a course</a></p>
     {% endif %}

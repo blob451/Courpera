@@ -54,6 +54,9 @@ gitignore/
 
 # Local virtual environment
 .venv/
+
+# Media uploads (generated)
+media/
 .pytest_cache/
 cover/
 

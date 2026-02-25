@@ -73,7 +73,8 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
     owner_view = course.is_owner(request.user)
     is_enrolled = _is_enrolled(request.user, course)
     if not (owner_view or is_enrolled):
-        raise PermissionDenied
+        messages.error(request, "Please enrol to access this course.")
+        return redirect("courses:list")
 
     # For teachers, show roster; for students, show a concise message.
     roster = None
