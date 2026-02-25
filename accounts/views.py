@@ -12,6 +12,8 @@ from django.urls import reverse
 from .decorators import role_required
 from .forms import RegistrationForm, ProfileForm
 from .models import Role
+from activity.forms import StatusForm
+from activity.models import Status
 
 
 class CourperaLoginView(LoginView):
@@ -64,7 +66,9 @@ def home_teacher(request: HttpRequest) -> HttpResponse:
 @login_required
 @role_required(Role.STUDENT)
 def home_student(request: HttpRequest) -> HttpResponse:
-    return render(request, "accounts/home_student.html")
+    updates = Status.objects.filter(user=request.user)[:20]
+    form = StatusForm()
+    return render(request, "accounts/home_student.html", {"updates": updates, "status_form": form})
 
 
 @login_required

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load avatar %}
 {% block title %}{{ course.title }} — {{ block.super }}{% endblock %}
 {% block content %}
   <section class="panel">
@@ -10,8 +11,10 @@
     {% if owner_view %}
       <p><a href="/courses/{{ course.id }}/edit/">Edit course</a></p>
     {% endif %}
+    <p><a href="/courses/{{ course.id }}/calendar.ics">Download calendar (.ics)</a></p>
   </section>
 
+  {% if owner_view or is_enrolled %}
   <section class="panel">
     <h3>Materials</h3>
     <ul>
@@ -41,17 +44,6 @@
       </div>
       <button type="submit">Upload</button>
     </form>
-    {% if messages %}
-      <script>
-        try {
-          {% for message in messages %}
-            {% if 'error' in message.tags %}
-              alert('{{ message|escapejs }}');
-            {% endif %}
-          {% endfor %}
-        } catch (e) { /* no-op */ }
-      </script>
-    {% endif %}
     <script>
       (function(){
         var fi = document.getElementById('id_file');
@@ -71,6 +63,7 @@
     </script>
     {% endif %}
   </section>
+  {% endif %}
 
   {% if owner_view %}
   <section class="panel">
@@ -79,6 +72,7 @@
     <ul>
       {% for e in roster %}
         <li>
+          <img src="{% avatar_url e.student 32 %}" alt="" style="width:24px;height:24px;vertical-align:middle;border-radius:50%" />
           {{ e.student.username }}
           <form method="post" action="/courses/{{ course.id }}/remove/{{ e.student.id }}/" style="display:inline">
             {% csrf_token %}
@@ -129,5 +123,35 @@
       <button type="submit">Unenrol from course</button>
     </form>
   </section>
+  <section class="panel">
+    <h3>Leave feedback</h3>
+    <form method="post" action="/courses/{{ course.id }}/feedback/">
+      {% csrf_token %}
+      <div class="kv">
+        <label for="id_rating">Rating (1–5)</label>
+        {{ feedback_form.rating }}
+        <label for="id_comment">Comment</label>
+        {{ feedback_form.comment }}
+        <label for="id_anonymous">Anonymous</label>
+        {{ feedback_form.anonymous }}
+      </div>
+      <button type="submit">Save feedback</button>
+    </form>
+  </section>
   {% endif %}
+
+  <section class="panel">
+    <h3>Feedback</h3>
+    <ul>
+      {% for fb in feedback_list %}
+        <li>
+          <strong>{{ fb.rating }}/5</strong>
+          — {% if fb.anonymous %}Anonymous{% else %}{{ fb.student.username }}{% endif %}
+          {% if fb.comment %}<div>{{ fb.comment }}</div>{% endif %}
+        </li>
+      {% empty %}
+        <li>No feedback yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
 {% endblock %}

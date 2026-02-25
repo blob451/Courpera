@@ -13,6 +13,8 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from .forms import CourseForm, AddStudentForm
 from .models import Course, Enrolment
+from .models_feedback import Feedback
+from .forms_feedback import FeedbackForm
 
 
 def _is_enrolled(user, course: Course) -> bool:
@@ -72,17 +74,30 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
     course = get_object_or_404(Course.objects.select_related("owner"), pk=pk)
     owner_view = course.is_owner(request.user)
     is_enrolled = _is_enrolled(request.user, course)
-    if not (owner_view or is_enrolled):
-        messages.error(request, "Please enrol to access this course.")
-        return redirect("courses:list")
+    # Allow non-enrolled students to see a limited view (title, teacher, feedback list).
+    limited_view = not (owner_view or is_enrolled)
 
     # For teachers, show roster; for students, show a concise message.
     roster = None
     add_form = None
+    feedback_form = None
     if owner_view:
         roster = Enrolment.objects.filter(course=course).select_related("student").order_by("student__username")
         add_form = AddStudentForm()
-    ctx = {"course": course, "owner_view": owner_view, "is_enrolled": is_enrolled, "roster": roster, "add_form": add_form}
+    if is_enrolled:
+        # Initialise form with existing feedback if present
+        existing = Feedback.objects.filter(course=course, student=request.user).first()
+        feedback_form = FeedbackForm(instance=existing)
+    ctx = {
+        "course": course,
+        "owner_view": owner_view,
+        "is_enrolled": is_enrolled,
+        "limited_view": limited_view,
+        "roster": roster,
+        "add_form": add_form,
+        "feedback_form": feedback_form,
+        "feedback_list": Feedback.objects.filter(course=course).select_related("student"),
+    }
     return render(request, "courses/detail.html", ctx)
 
 
@@ -184,3 +199,25 @@ def course_unenrol(request: HttpRequest, pk: int) -> HttpResponse:
         Enrolment.objects.filter(course=course, student=request.user).delete()
         messages.success(request, "Unenrolled from course.")
     return redirect("courses:list")
+
+
+@login_required
+@role_required(Role.STUDENT)
+def course_feedback(request: HttpRequest, pk: int) -> HttpResponse:
+    """Create or update feedback for a course (student-only, enrolled)."""
+    course = get_object_or_404(Course, pk=pk)
+    if not Enrolment.objects.filter(course=course, student=request.user).exists():
+        messages.error(request, "Please enrol before leaving feedback.")
+        return redirect("courses:detail", pk=course.pk)
+    if request.method == "POST":
+        existing = Feedback.objects.filter(course=course, student=request.user).first()
+        form = FeedbackForm(request.POST, instance=existing)
+        if form.is_valid():
+            fb = form.save(commit=False)
+            fb.course = course
+            fb.student = request.user
+            fb.save()
+            messages.success(request, "Feedback saved.")
+        else:
+            messages.error(request, "Invalid feedback.")
+    return redirect("courses:detail", pk=course.pk)

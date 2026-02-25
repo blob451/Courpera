@@ -14,6 +14,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("courses/", include("courses.urls")),
     path("materials/", include("materials.urls")),
+    path("activity/", include("activity.urls")),
     path("", include("ui.urls")),  # public index
     # API schema and docs
     path("", include("api.urls")),

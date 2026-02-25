@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "accounts",
     "courses",
     "materials",
+    "activity",
     "ui",
     "api",
 ]
@@ -150,3 +151,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Upload safety limits (enforced also in app-level validators)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+
+# Avatars (DiceBear) defaults
+AVATAR_BASE_URL = os.environ.get("AVATAR_BASE_URL", "https://api.dicebear.com/7.x")
+AVATAR_STYLE = os.environ.get("AVATAR_STYLE", "initials")
+AVATAR_SEED_SALT = os.environ.get("AVATAR_SEED_SALT", "courpera-salt")

@@ -9,5 +9,20 @@
       <li><a href="/docs/">API docs</a></li>
     </ul>
   </section>
-{% endblock %}
 
+  <section class="panel">
+    <h3>Status updates</h3>
+    <form method="post" action="/activity/status/">
+      {% csrf_token %}
+      {{ status_form.text }}
+      <div><button type="submit">Post</button></div>
+    </form>
+    <ul>
+      {% for s in updates %}
+        <li><span class="muted">{{ s.created_at }}</span> — {{ s.text }}</li>
+      {% empty %}
+        <li>No updates yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

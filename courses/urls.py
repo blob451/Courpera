@@ -7,9 +7,11 @@ from .views import (
     course_detail,
     course_enrol,
     course_unenrol,
+    course_feedback,
     course_remove_student,
     course_add_student,
 )
+from .views_ics import course_calendar
 
 app_name = "courses"
 
@@ -20,6 +22,8 @@ urlpatterns = [
     path("<int:pk>/edit/", course_edit, name="edit"),
     path("<int:pk>/enrol/", course_enrol, name="enrol"),
     path("<int:pk>/unenrol/", course_unenrol, name="unenrol"),
+    path("<int:pk>/feedback/", course_feedback, name="feedback"),
+    path("<int:pk>/calendar.ics", course_calendar, name="calendar"),
     path("<int:pk>/remove/<int:user_id>/", course_remove_student, name="remove"),
     path("<int:pk>/add-student/", course_add_student, name="add-student"),
 ]
