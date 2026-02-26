@@ -4,10 +4,11 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import viewsets, mixins, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from accounts.models import UserProfile
 from courses.models import Course, Enrolment
@@ -37,6 +38,10 @@ def _is_enrolled(user, course: Course) -> bool:
     return Enrolment.objects.filter(course=course, student=user).exists()
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Users"]),
+    retrieve=extend_schema(tags=["Users"]),
+)
 class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all().select_related("profile").order_by("username")
     serializer_class = UserSerializer
@@ -45,6 +50,14 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
     ordering_fields = ["username", "id"]
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Courses"]),
+    retrieve=extend_schema(tags=["Courses"]),
+    create=extend_schema(tags=["Courses"]),
+    update=extend_schema(tags=["Courses"]),
+    partial_update=extend_schema(tags=["Courses"]),
+    destroy=extend_schema(tags=["Courses"]),
+)
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.select_related("owner", "owner__profile").all()
     serializer_class = CourseSerializer
@@ -66,6 +79,12 @@ class CourseViewSet(viewsets.ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Enrolments"]),
+    retrieve=extend_schema(tags=["Enrolments"]),
+    create=extend_schema(tags=["Enrolments"]),
+    destroy=extend_schema(tags=["Enrolments"]),
+)
 class EnrolmentViewSet(viewsets.ModelViewSet):
     serializer_class = EnrolmentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -99,6 +118,10 @@ class EnrolmentViewSet(viewsets.ModelViewSet):
         profile = getattr(self.request.user, "profile", None)
         if getattr(profile, "role", None) != "student":
             raise PermissionDenied("Only students can enrol.")
+        course = serializer.validated_data.get("course")
+        # Prevent duplicate enrolments with a friendly 400 instead of DB error
+        if Enrolment.objects.filter(course=course, student=self.request.user).exists():
+            raise ValidationError({"detail": "Already enrolled in this course."})
         serializer.save(student=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
@@ -112,6 +135,10 @@ class EnrolmentViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Not permitted."}, status=status.HTTP_403_FORBIDDEN)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Materials"]),
+    retrieve=extend_schema(tags=["Materials"]),
+)
 class MaterialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = MaterialSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -130,6 +157,14 @@ class MaterialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
         return qs
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Feedback"]),
+    retrieve=extend_schema(tags=["Feedback"]),
+    create=extend_schema(tags=["Feedback"]),
+    update=extend_schema(tags=["Feedback"]),
+    partial_update=extend_schema(tags=["Feedback"]),
+    destroy=extend_schema(tags=["Feedback"]),
+)
 class FeedbackViewSet(viewsets.ModelViewSet):
     serializer_class = FeedbackSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -162,6 +197,12 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Status"]),
+    retrieve=extend_schema(tags=["Status"]),
+    create=extend_schema(tags=["Status"]),
+    destroy=extend_schema(tags=["Status"]),
+)
 class StatusViewSet(viewsets.ModelViewSet):
     serializer_class = StatusSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -185,6 +226,7 @@ class StatusViewSet(viewsets.ModelViewSet):
 
 @api_view(["GET"])
 @permission_classes([IsTeacher])
+@extend_schema(tags=["Search"]) 
 def search_users(request):
     """Teacher-only search for users by username or email (partial, case-insensitive)."""
     q = request.query_params.get("q", "").strip()

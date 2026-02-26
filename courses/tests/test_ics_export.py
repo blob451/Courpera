@@ -23,6 +23,8 @@ def test_course_calendar_ics_contains_events():
     r = client.get(f"/courses/{c.pk}/calendar.ics")
     assert r.status_code == 200
     assert r["Content-Type"].startswith("text/calendar")
+    cd = r.headers.get("Content-Disposition", "")
+    assert f"course-{c.pk}.ics" in cd
     body = r.content.decode("utf-8", errors="ignore")
     assert "BEGIN:VCALENDAR" in body and "END:VCALENDAR" in body
     assert "PRODID:-//Courpera//Course Calendar//EN" in body

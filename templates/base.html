@@ -50,9 +50,6 @@
       <ul style="margin:0;padding-left:1.2rem">
         {% for message in messages %}
           <li class="muted">{{ message }}</li>
-          {% if 'error' in message.tags %}
-            <script>try{ alert('{{ message|escapejs }}'); }catch(e){}</script>
-          {% endif %}
         {% endfor %}
       </ul>
     </div>
