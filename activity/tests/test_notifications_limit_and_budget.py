@@ -59,3 +59,20 @@ def test_notifications_recent_query_budget():
         r = ct.get("/activity/notifications/recent/?limit=5")
         assert r.status_code == 200
     assert len(ctx.captured_queries) <= 5
+
+
+@pytest.mark.django_db
+def test_notifications_limit_invalid_param_falls_back_to_default():
+    t = User.objects.create_user(username="ninv", password="pw")
+    t.profile.role = "teacher"; t.profile.save(update_fields=["role"])
+    s = User.objects.create_user(username="ninv_s", password="pw")
+    s.profile.role = "student"; s.profile.save(update_fields=["role"])
+    c = Course.objects.create(owner=t, title="Ninv", description="")
+    Enrolment.objects.create(course=c, student=s)
+    ct = Client(); assert ct.login(username="ninv", password="pw")
+    # invalid limit should not 500; should return 200 and default number of items (<=10)
+    r = ct.get("/activity/notifications/recent/?limit=abc")
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data.get("results", []), list)
+    assert len(data.get("results", [])) <= 10
