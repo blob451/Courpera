@@ -12,11 +12,23 @@ class ContentSecurityPolicyMiddleware(MiddlewareMixin):
     """
 
     def process_response(self, request, response):  # noqa: D401
+        # Base, strict policy applied site‑wide
+        style_src = "'self'"
+
+        # Swagger UI injects one small inline <style> block. Allow it only on /docs/ via hash.
+        # The hash value is taken from the browser CSP error suggestion.
+        if request.path == "/docs/":
+            style_src = (
+                "'self' "
+                "'sha256-RL3ie0nH+Lzz2YNqQN83mnU0J1ot4QL7b99vMdIX99w=' "
+                "'unsafe-hashes'"
+            )
+
         csp = (
             "default-src 'self'; "
             "img-src 'self' https://api.dicebear.com data:; "
             "script-src 'self'; "
-            "style-src 'self'; "
+            f"style-src {style_src}; "
             "connect-src 'self' ws: wss:; "
             "frame-ancestors 'none'"
         )

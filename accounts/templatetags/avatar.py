@@ -16,9 +16,7 @@ def avatar_url(user, size: int = 48) -> str:
     try:
         seed_src = f"{getattr(user, 'pk', '0')}:{getattr(settings, 'AVATAR_SEED_SALT', 'courpera')}"
         seed = hashlib.sha256(seed_src.encode()).hexdigest()
-        base = getattr(settings, "AVATAR_BASE_URL", "https://api.dicebear.com/7.x")
-        style = getattr(settings, "AVATAR_STYLE", "initials")
-        return f"{base}/{style}/svg?seed={seed}&size={size}&backgroundColor=lightgray"
+        # Serve avatars via a same-origin proxy endpoint to avoid ORB blocking
+        return f"/accounts/avatar/{getattr(user, 'pk', 0)}/{size}/?seed={seed}&size={size}"
     except Exception:
         return ""
-

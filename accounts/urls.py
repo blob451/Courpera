@@ -9,6 +9,7 @@ from .views import (
     home_student,
     profile_edit,
     search_users,
+    avatar_proxy,
 )
 
 app_name = "accounts"
@@ -22,4 +23,5 @@ urlpatterns = [
     path("home/student/", home_student, name="home-student"),
     path("profile/", profile_edit, name="profile"),
     path("search/", search_users, name="search"),
+    path("avatar/<int:user_id>/<int:size>/", avatar_proxy, name="avatar-proxy"),
 ]

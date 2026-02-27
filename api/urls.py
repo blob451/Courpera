@@ -32,8 +32,17 @@ router.register(r"api/v1/status", StatusViewSet, basename="status")
 
 urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    # Use custom templates without inline JS/CSS to satisfy CSP
+    path(
+        "docs/",
+        SpectacularSwaggerView.as_view(url_name="schema", template_name="api/swagger_ui.html"),
+        name="swagger-ui",
+    ),
+    path(
+        "redoc/",
+        SpectacularRedocView.as_view(url_name="schema", template_name="api/redoc.html"),
+        name="redoc",
+    ),
     path("api/v1/search/users", search_users, name="search-users"),
     path("", include(router.urls)),
 ]

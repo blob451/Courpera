@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title|default:"API Docs" }}</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="/favicon.ico">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'drf_spectacular_sidecar/swagger-ui-dist/swagger-ui.css' %}">
+  </head>
+  <body>
+    <div id="swagger-ui" data-schema-url="{{ schema_url|default:'/api/schema/' }}"></div>
+
+    <script defer src="{% static 'drf_spectacular_sidecar/swagger-ui-dist/swagger-ui-bundle.js' %}"></script>
+    <script defer src="{% static 'drf_spectacular_sidecar/swagger-ui-dist/swagger-ui-standalone-preset.js' %}"></script>
+    <script defer src="{% static 'js/swagger-init.js' %}"></script>
+  </body>
+  </html>

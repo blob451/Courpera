@@ -41,6 +41,14 @@ INSTALLED_APPS = [
     "api",
 ]
 
+# Optional: include sidecar if installed to serve local Swagger/Redoc assets
+try:  # pragma: no cover - optional dependency
+    import drf_spectacular_sidecar  # type: ignore  # noqa: F401
+except Exception:
+    pass
+else:
+    INSTALLED_APPS.append("drf_spectacular_sidecar")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "config.middleware.ContentSecurityPolicyMiddleware",
@@ -135,6 +143,9 @@ SPECTACULAR_SETTINGS = {
     # Ensure /api/schema/ remains available (even when incomplete) for local/dev
     "DISABLE_ERRORS_AND_WARNINGS": True,
     "SERVE_INCLUDE_SCHEMA": True,
+    # Serve Swagger/Redoc assets from local sidecar to satisfy strict CSP
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 
 
