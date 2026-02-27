@@ -3,6 +3,13 @@
 {% block content %}
   <section class="panel">
     <h2>Courses</h2>
+    {% if role == 'student' %}
+      <form method="get" action="/courses/" class="mb-2">
+        <label for="q" class="sr-only">Search courses</label>
+        <input id="q" name="q" type="search" value="{{ q|default:'' }}" placeholder="Search courses…" class="input" />
+        <button type="submit" class="btn">Search</button>
+      </form>
+    {% endif %}
     {% if request.user.is_authenticated and role == 'teacher' %}
       <p><a href="/courses/create/">Create a course</a></p>
     {% endif %}

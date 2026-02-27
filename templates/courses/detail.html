@@ -3,6 +3,17 @@
 {% block title %}{{ course.title }} — {{ block.super }}{% endblock %}
 {% block content %}
   <section class="panel">
+    {% if breadcrumbs %}
+    <nav aria-label="Breadcrumbs" class="breadcrumbs mb-2">
+      {% for href, label in breadcrumbs %}
+        {% if forloop.last %}
+          <span class="muted">{{ label }}</span>
+        {% else %}
+          <a href="{{ href }}">{{ label }}</a> <span class="muted">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    {% endif %}
     <h2>{{ course.title }}</h2>
     {% if course.description %}
       <p>{{ course.description }}</p>
@@ -44,7 +55,6 @@
       </div>
       <button type="submit">Upload</button>
     </form>
-    
     {% endif %}
   </section>
   <section class="panel" data-chat-course-id="{{ course.id }}">
@@ -52,7 +62,7 @@
     <div id="chat-log" class="chat-log"></div>
     <form id="chat-form">
       <label class="sr-only" for="chat-input">Message</label>
-      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message…" style="width:80%" />
+      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message..." class="input w-80" />
       <button type="submit">Send</button>
     </form>
   </section>
@@ -88,7 +98,7 @@
       <button type="submit" name="action" value="search">Search</button>
     </form>
     {% if searched and search_results|length == 0 %}
-      <script>try{ alert('No users found'); }catch(e){/*no-op*/}</script>
+      <p class="muted">No users found.</p>
     {% endif %}
     {% if search_results %}
       <h4>Search results</h4>
@@ -121,7 +131,7 @@
     <form method="post" action="/courses/{{ course.id }}/feedback/">
       {% csrf_token %}
       <div class="kv">
-        <label for="id_rating">Rating (1–5)</label>
+        <label for="id_rating">Rating (1‑5)</label>
         {{ feedback_form.rating }}
         <label for="id_comment">Comment</label>
         {{ feedback_form.comment }}
@@ -148,5 +158,4 @@
     </ul>
   </section>
 {% endblock %}
-
 

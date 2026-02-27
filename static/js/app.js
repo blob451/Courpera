@@ -33,6 +33,15 @@
         try { window.location.href = '/activity/notifications/'; } catch(e) {}
         return;
       }
+      // Close Explore if open
+      try {
+        var explorePanel = document.getElementById('explorePanel');
+        var exploreBtn = document.getElementById('exploreBtn');
+        if (explorePanel && explorePanel.classList.contains('open')) {
+          explorePanel.classList.remove('open');
+          if (exploreBtn) exploreBtn.setAttribute('aria-expanded','false');
+        }
+      } catch(e) {}
       panel.classList.add('open');
       try { btn.setAttribute('aria-expanded', 'true'); } catch(e) {}
       fetchRecent();
@@ -55,6 +64,46 @@
         panel.classList.remove('open');
         try { btn.setAttribute('aria-expanded', 'false'); } catch(err) {}
       }
+    });
+  }
+
+  function initExplore(){
+    var btn = document.getElementById('exploreBtn');
+    var panel = document.getElementById('explorePanel');
+    if(!btn || !panel) return;
+    function close(){ panel.classList.remove('open'); try{ btn.setAttribute('aria-expanded','false'); }catch(e){} }
+    btn.addEventListener('click', function(ev){
+      try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
+      var isOpen = panel.classList.contains('open');
+      if(isOpen){ close(); return; }
+      // Close Notifications if open
+      try {
+        var notifPanel = document.getElementById('notifPanel');
+        var notifBtn = document.getElementById('notifBtn');
+        if (notifPanel && notifPanel.classList.contains('open')) {
+          notifPanel.classList.remove('open');
+          if (notifBtn) notifBtn.setAttribute('aria-expanded','false');
+        }
+      } catch(e) {}
+      panel.classList.add('open');
+      try{ btn.setAttribute('aria-expanded','true'); }catch(e){}
+    });
+    panel.addEventListener('click', function(ev){ try{ ev.stopPropagation(); }catch(e){} });
+    document.addEventListener('click', function(ev){
+      var inside = panel.contains(ev.target) || (btn.contains ? btn.contains(ev.target) : ev.target === btn);
+      if(!inside) close();
+    });
+    document.addEventListener('keydown', function(ev){ if(ev.key==='Escape') close(); });
+  }
+
+  function initNavToggle(){
+    var toggle = document.getElementById('navToggle');
+    var links = document.getElementById('headerLinks');
+    if(!toggle || !links) return;
+    toggle.addEventListener('click', function(){
+      var open = links.classList.contains('open');
+      links.classList.toggle('open', !open);
+      try{ toggle.setAttribute('aria-expanded', String(!open)); }catch(e){}
     });
   }
 
@@ -114,6 +163,8 @@
 
   document.addEventListener('DOMContentLoaded', function(){
     initNotifications();
+    initExplore();
+    initNavToggle();
     initMaterials();
     initChat();
   });

@@ -4,6 +4,27 @@
     {% if request.user.is_authenticated %}
       <a href="/accounts/home/">Home</a>
       <a href="/courses/">Courses</a>
+      <span class="explore-wrap">
+        <button id="exploreBtn" class="btn-link" type="button" aria-haspopup="menu" aria-controls="explorePanel" aria-expanded="false">Explore</button>
+        <div id="explorePanel" class="explore-panel" role="menu" aria-label="Explore subjects">
+          <div class="explore-grid">
+            <div>
+              <strong class="muted">Subjects</strong>
+              <a href="/courses/?q=data">Data Science</a>
+              <a href="/courses/?q=computer">Computer Science</a>
+              <a href="/courses/?q=business">Business</a>
+              <a href="/courses/?q=personal">Personal Development</a>
+              <a href="/courses/?q=language">Language Learning</a>
+            </div>
+            <div>
+              <strong class="muted">Levels</strong>
+              <a href="/courses/?q=beginner">Beginner</a>
+              <a href="/courses/?q=intermediate">Intermediate</a>
+              <a href="/courses/?q=advanced">Advanced</a>
+            </div>
+          </div>
+        </div>
+      </span>
       <span class="notif-wrap">
         <button id="notifBtn" class="btn-link" type="button" aria-haspopup="dialog" aria-controls="notifPanel" aria-expanded="false">Notifications <span id="notifBadge" class="muted"></span></button>
         <div id="notifPanel" class="notif-panel" role="dialog" aria-label="Recent notifications">

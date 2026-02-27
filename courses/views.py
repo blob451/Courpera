@@ -25,11 +25,14 @@ def _is_enrolled(user, course: Course) -> bool:
 
 def course_list(request: HttpRequest) -> HttpResponse:
     """Public course catalogue; actions vary by role."""
+    q = (request.GET.get("q") or "").strip()
     courses = Course.objects.select_related("owner").all()
+    if q:
+        courses = courses.filter(Q(title__icontains=q) | Q(owner__username__icontains=q))
     enrolments = set()
     if request.user.is_authenticated:
         enrolments = set(Enrolment.objects.filter(student=request.user).values_list("course_id", flat=True))
-    ctx = {"courses": courses, "enrolled_ids": enrolments, "role": getattr(getattr(request.user, "profile", None), "role", None)}
+    ctx = {"courses": courses, "enrolled_ids": enrolments, "role": getattr(getattr(request.user, "profile", None), "role", None), "q": q}
     return render(request, "courses/list.html", ctx)
 
 
@@ -97,6 +100,11 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "add_form": add_form,
         "feedback_form": feedback_form,
         "feedback_list": Feedback.objects.filter(course=course).select_related("student"),
+        "breadcrumbs": [
+            ("/", "Home"),
+            ("/courses/", "Courses"),
+            ("", course.title),
+        ],
     }
     return render(request, "courses/detail.html", ctx)
 
