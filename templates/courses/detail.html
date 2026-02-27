@@ -2,7 +2,7 @@
 {% load avatar %}
 {% block title %}{{ course.title }} — {{ block.super }}{% endblock %}
 {% block content %}
-  <section class="panel">
+  <section class="panel hero">
     {% if breadcrumbs %}
     <nav aria-label="Breadcrumbs" class="breadcrumbs mb-2">
       {% for href, label in breadcrumbs %}
@@ -19,10 +19,23 @@
       <p>{{ course.description }}</p>
     {% endif %}
     <p class="muted">Teacher: {{ course.owner.username }}</p>
-    {% if owner_view %}
-      <p><a href="/courses/{{ course.id }}/edit/">Edit course</a></p>
-    {% endif %}
-    <p><a href="/courses/{{ course.id }}/calendar.ics">Download calendar (.ics)</a></p>
+    <div class="hero-actions">
+      {% if owner_view %}
+        <a class="btn" href="/courses/{{ course.id }}/edit/">Edit course</a>
+      {% elif is_enrolled %}
+        <form method="post" action="/courses/{{ course.id }}/unenrol/" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="btn">Unenrol</button>
+        </form>
+      {% elif not limited_view %}
+        <form method="post" action="/courses/{{ course.id }}/enrol/" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="btn">Enrol for free</button>
+        </form>
+      {% endif %}
+      <a class="btn-link" href="/courses/{{ course.id }}/calendar.ics">Download calendar (.ics)</a>
+      <span class="badge">Flexible deadlines</span>
+    </div>
   </section>
 
   {% if owner_view or is_enrolled %}
@@ -158,4 +171,3 @@
     </ul>
   </section>
 {% endblock %}
-

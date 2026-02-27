@@ -11,31 +11,36 @@
       </form>
     {% endif %}
     {% if request.user.is_authenticated and role == 'teacher' %}
-      <p><a href="/courses/create/">Create a course</a></p>
+      <p><a class="btn" href="/courses/create/">Create a course</a></p>
     {% endif %}
-    <ul>
+    <div class="card-grid">
       {% for c in courses %}
-        <li>
-          <strong><a href="/courses/{{ c.id }}/">{{ c.title }}</a></strong>
-          <span class="muted">by {{ c.owner.username }}</span>
+      <article class="card">
+        {% if request.user.is_authenticated and role == 'student' and c.id in enrolled_ids %}
+          <span class="badge card-status">Enrolled</span>
+        {% endif %}
+        <h3><a href="/courses/{{ c.id }}/">{{ c.title }}</a></h3>
+        <div class="meta">by {{ c.owner.username }}</div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="/courses/{{ c.id }}/">View</a>
           {% if request.user.is_authenticated and role == 'student' %}
             {% if c.id in enrolled_ids %}
-              — <span class="muted">Enrolled</span>
               <form method="post" action="/courses/{{ c.id }}/unenrol/" class="inline">
                 {% csrf_token %}
-                <button type="submit">Unenrol</button>
+                <button type="submit" class="btn">Unenrol</button>
               </form>
             {% else %}
               <form method="post" action="/courses/{{ c.id }}/enrol/" class="inline">
                 {% csrf_token %}
-                <button type="submit">Enrol</button>
+                <button type="submit" class="btn">Enrol</button>
               </form>
             {% endif %}
           {% endif %}
-        </li>
+        </div>
+      </article>
       {% empty %}
-        <li>No courses yet.</li>
+      <div class="muted">No courses yet.</div>
       {% endfor %}
-    </ul>
+    </div>
   </section>
 {% endblock %}
