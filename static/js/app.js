@@ -107,6 +107,34 @@
     });
   }
 
+  function initAccordion(){
+    var containers = document.querySelectorAll('.accordion');
+    if(!containers || !containers.length) return;
+    containers.forEach(function(acc){
+      acc.addEventListener('click', function(e){
+        var btn = e.target.closest('.accordion-button');
+        if(!btn) return;
+        try{ e.preventDefault(); }catch(_){ }
+        var panelId = btn.getAttribute('aria-controls');
+        var panel = panelId && document.getElementById(panelId);
+        if(!panel) return;
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        if(expanded){ panel.setAttribute('hidden',''); }
+        else { panel.removeAttribute('hidden'); }
+      });
+      acc.addEventListener('keydown', function(e){
+        if(e.key === 'Escape'){
+          // collapse any open panels in this accordion
+          var btns = acc.querySelectorAll('.accordion-button[aria-expanded="true"]');
+          btns.forEach(function(b){ b.setAttribute('aria-expanded','false'); });
+          var panels = acc.querySelectorAll('.accordion-panel:not([hidden])');
+          panels.forEach(function(p){ p.setAttribute('hidden',''); });
+        }
+      });
+    });
+  }
+
   function initMaterials(){
     var fi = qs('id_file');
     var ti = qs('id_title');
@@ -165,6 +193,7 @@
     initNotifications();
     initExplore();
     initNavToggle();
+    initAccordion();
     initMaterials();
     initChat();
   });

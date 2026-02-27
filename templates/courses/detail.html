@@ -39,6 +39,61 @@
   </section>
 
   {% if owner_view or is_enrolled %}
+  <!-- Syllabus first -->
+  <section class="panel">
+    <h3>Syllabus</h3>
+    <div class="accordion" data-accordion>
+      <div class="accordion-item">
+        <button type="button" class="accordion-button" aria-expanded="true" aria-controls="syllabus-panel">
+          Weekly outline <span class="chev">›</span>
+        </button>
+        <div id="syllabus-panel" class="accordion-panel">
+          {% if course.materials.all %}
+          <ul>
+            {% for m in course.materials.all %}
+            <li>{{ forloop.counter }}. {{ m.title }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">Syllabus will appear here as materials are added.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-button" aria-expanded="false" aria-controls="outcomes-panel">
+          What you'll learn <span class="chev">›</span>
+        </button>
+        <div id="outcomes-panel" class="accordion-panel" hidden>
+          <ul>
+            <li>Understand core concepts of the course.</li>
+            <li>Work with real-world examples and exercises.</li>
+            <li>Build confidence through hands-on practice.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="instructor mt-2">
+      <img src="{% avatar_url course.owner 48 %}" alt="" referrerpolicy="no-referrer" />
+      <div>
+        <div><strong>{{ course.owner.username }}</strong></div>
+        {% if course.owner.profile.full_name %}
+          <div class="muted">{{ course.owner.profile.full_name }}</div>
+        {% endif %}
+        <div class="muted">Partner: Courpera</div>
+      </div>
+    </div>
+  </section>
+  <!-- Then Course chat below Syllabus -->
+  <section class="panel" data-chat-course-id="{{ course.id }}">
+    <h3>Course chat</h3>
+    <div id="chat-log" class="chat-log"></div>
+    <form id="chat-form">
+      <label class="sr-only" for="chat-input">Message</label>
+      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message..." class="input w-80" />
+      <button type="submit">Send</button>
+    </form>
+  </section>
+  <!-- Then Materials under Syllabus/Chat -->
   <section class="panel">
     <h3>Materials</h3>
     <ul>
@@ -70,21 +125,12 @@
     </form>
     {% endif %}
   </section>
-  <section class="panel" data-chat-course-id="{{ course.id }}">
-    <h3>Course chat</h3>
-    <div id="chat-log" class="chat-log"></div>
-    <form id="chat-form">
-      <label class="sr-only" for="chat-input">Message</label>
-      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message..." class="input w-80" />
-      <button type="submit">Send</button>
-    </form>
-  </section>
   {% endif %}
 
   {% if owner_view %}
   <section class="panel">
-    <h3>Roster</h3>
-    <p class="muted">Teacher-only view. Remove students as needed.</p>
+    <h3>Roster & Add student</h3>
+    <p class="muted">Teacher-only view. Manage enrolments.</p>
     <ul>
       {% for e in roster %}
         <li>
@@ -99,9 +145,7 @@
         <li>No students enrolled yet.</li>
       {% endfor %}
     </ul>
-  </section>
-  <section class="panel">
-    <h3>Add student</h3>
+    <hr />
     <form method="post" action="/courses/{{ course.id }}/add-student/">
       {% csrf_token %}
       <div class="kv">
@@ -132,13 +176,23 @@
   {% endif %}
 
   {% if not owner_view and is_enrolled %}
+  {% endif %}
+
   <section class="panel">
-    <h3>Course actions</h3>
-    <form method="post" action="/courses/{{ course.id }}/unenrol/">
-      {% csrf_token %}
-      <button type="submit">Unenrol from course</button>
-    </form>
+    <h3>Feedback</h3>
+    <ul>
+      {% for fb in feedback_list %}
+        <li>
+          <strong>{{ fb.rating }}/5</strong>
+          — {% if fb.anonymous %}Anonymous{% else %}{{ fb.student.username }}{% endif %}
+          {% if fb.comment %}<div>{{ fb.comment }}</div>{% endif %}
+        </li>
+      {% empty %}
+        <li>No feedback yet.</li>
+      {% endfor %}
+    </ul>
   </section>
+  {% if not owner_view and is_enrolled %}
   <section class="panel">
     <h3>Leave feedback</h3>
     <form method="post" action="/courses/{{ course.id }}/feedback/">
@@ -156,18 +210,5 @@
   </section>
   {% endif %}
 
-  <section class="panel">
-    <h3>Feedback</h3>
-    <ul>
-      {% for fb in feedback_list %}
-        <li>
-          <strong>{{ fb.rating }}/5</strong>
-          — {% if fb.anonymous %}Anonymous{% else %}{{ fb.student.username }}{% endif %}
-          {% if fb.comment %}<div>{{ fb.comment }}</div>{% endif %}
-        </li>
-      {% empty %}
-        <li>No feedback yet.</li>
-      {% endfor %}
-    </ul>
-  </section>
+  
 {% endblock %}
