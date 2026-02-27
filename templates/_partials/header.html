@@ -1,0 +1,38 @@
+<header role="banner">
+  <h1><a href="/">Courpera</a></h1>
+  <nav aria-label="Primary" class="header-nav">
+    {% if request.user.is_authenticated %}
+      <a href="/accounts/home/">Home</a>
+      <a href="/courses/">Courses</a>
+      <span class="notif-wrap">
+        <button id="notifBtn" class="btn-link" type="button" aria-haspopup="dialog" aria-controls="notifPanel" aria-expanded="false">Notifications <span id="notifBadge" class="muted"></span></button>
+        <div id="notifPanel" class="notif-panel" role="dialog" aria-label="Recent notifications">
+          <strong>Recent</strong>
+          <ul id="notifList" class="notif-list"></ul>
+          <div>
+            <form method="post" action="/activity/notifications/mark-all-read/">
+              {% csrf_token %}
+              <button type="submit" class="btn-link">Mark all read</button>
+              <a href="/activity/notifications/">View all</a>
+            </form>
+          </div>
+        </div>
+      </span>
+      <form method="post" action="/accounts/logout/" class="logout-form">
+        {% csrf_token %}
+        <button type="submit" class="btn-link">Sign out</button>
+      </form>
+      <span class="flex-spacer"></span>
+      {% if request.user.profile and request.user.profile.role == 'teacher' %}
+      <form method="get" action="/accounts/search/" class="header-search">
+        <label for="hdrq" class="sr-only">Search users</label>
+        <input id="hdrq" name="q" type="search" placeholder="Search users…" class="input" />
+      </form>
+      {% endif %}
+    {% else %}
+      <a href="/courses/">Courses</a>
+      <a href="/accounts/login/">Sign in</a>
+      <a href="/accounts/register/">Register</a>
+    {% endif %}
+  </nav>
+</header>

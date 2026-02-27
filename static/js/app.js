@@ -24,13 +24,37 @@
         })
         .catch(function(){});
     }
-    btn.addEventListener('click', function(){
-      var show = panel.style.display === 'none';
-      panel.style.display = show ? 'block' : 'none';
-      if(show){ fetchRecent(); }
+    btn.addEventListener('click', function(ev){
+      try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
+      var isOpen = panel.classList.contains('open');
+      if (isOpen) {
+        try { btn.setAttribute('aria-expanded', 'false'); } catch(e) {}
+        // Navigate to full notifications page on second click while open
+        try { window.location.href = '/activity/notifications/'; } catch(e) {}
+        return;
+      }
+      panel.classList.add('open');
+      try { btn.setAttribute('aria-expanded', 'true'); } catch(e) {}
+      fetchRecent();
+    });
+    // Prevent clicks inside panel from bubbling to document and closing it
+    panel.addEventListener('click', function(ev){
+      try { ev.stopPropagation(); } catch(e) {}
     });
     document.addEventListener('click', function(e){
-      if(!panel.contains(e.target) && e.target !== btn){ panel.style.display='none'; }
+      // Close if click is outside both the panel and the button (including its children)
+      var clickedInsidePanel = panel.contains(e.target);
+      var clickedOnButton = btn.contains ? btn.contains(e.target) : (e.target === btn);
+      if(!clickedInsidePanel && !clickedOnButton){
+        panel.classList.remove('open');
+        try { btn.setAttribute('aria-expanded', 'false'); } catch(e) {}
+      }
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){
+        panel.classList.remove('open');
+        try { btn.setAttribute('aria-expanded', 'false'); } catch(err) {}
+      }
     });
   }
 
@@ -56,6 +80,11 @@
     var input = qs('chat-input');
     var holder = log && log.closest('[data-chat-course-id]');
     if(!log || !form || !input || !holder) return;
+    try{
+      // Remove any legacy inline styles to satisfy strict CSP and apply classes instead
+      input.classList.add('input','w-80');
+      input.removeAttribute('style');
+    }catch(e){}
     var courseId = holder.getAttribute('data-chat-course-id');
     function add(msg){
       var d = document.createElement('div');
@@ -89,4 +118,3 @@
     initChat();
   });
 })();
-

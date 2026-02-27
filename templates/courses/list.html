@@ -14,12 +14,12 @@
           {% if request.user.is_authenticated and role == 'student' %}
             {% if c.id in enrolled_ids %}
               — <span class="muted">Enrolled</span>
-              <form method="post" action="/courses/{{ c.id }}/unenrol/" style="display:inline">
+              <form method="post" action="/courses/{{ c.id }}/unenrol/" class="inline">
                 {% csrf_token %}
                 <button type="submit">Unenrol</button>
               </form>
             {% else %}
-              <form method="post" action="/courses/{{ c.id }}/enrol/" style="display:inline">
+              <form method="post" action="/courses/{{ c.id }}/enrol/" class="inline">
                 {% csrf_token %}
                 <button type="submit">Enrol</button>
               </form>

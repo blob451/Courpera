@@ -23,7 +23,7 @@
           <a href="{{ m.file.url }}" target="_blank" rel="noopener noreferrer">{{ m.title }}</a>
           <span class="muted">({{ m.size_bytes }} bytes)</span>
           {% if owner_view %}
-          <form method="post" action="/materials/{{ m.id }}/delete/" style="display:inline">
+          <form method="post" action="/materials/{{ m.id }}/delete/" class="inline">
             {% csrf_token %}
             <button type="submit">Delete</button>
           </form>
@@ -44,28 +44,12 @@
       </div>
       <button type="submit">Upload</button>
     </form>
-    <script>
-      (function(){
-        var fi = document.getElementById('id_file');
-        var ti = document.getElementById('id_title');
-        if (fi && ti) {
-          fi.addEventListener('change', function(){
-            try {
-              if (!ti.value && fi.files && fi.files[0] && fi.files[0].name) {
-                var n = fi.files[0].name;
-                var base = n.replace(/\.[^.]+$/, '');
-                ti.value = base;
-              }
-            } catch (e) { /* no-op */ }
-          });
-        }
-      })();
-    </script>
+    
     {% endif %}
   </section>
   <section class="panel" data-chat-course-id="{{ course.id }}">
     <h3>Course chat</h3>
-    <div id="chat-log" style="max-height:220px;overflow:auto;border:1px solid #ddd;padding:.5rem;background:#fff"></div>
+    <div id="chat-log" class="chat-log"></div>
     <form id="chat-form">
       <label class="sr-only" for="chat-input">Message</label>
       <input id="chat-input" type="text" maxlength="500" placeholder="Type a message…" style="width:80%" />
@@ -81,9 +65,9 @@
     <ul>
       {% for e in roster %}
         <li>
-          <img src="{% avatar_url e.student 32 %}" alt="" style="width:24px;height:24px;vertical-align:middle;border-radius:50%" />
+          <img src="{% avatar_url e.student 32 %}" alt="" class="avatar" referrerpolicy="no-referrer" />
           {{ e.student.username }}
-          <form method="post" action="/courses/{{ course.id }}/remove/{{ e.student.id }}/" style="display:inline">
+          <form method="post" action="/courses/{{ course.id }}/remove/{{ e.student.id }}/" class="inline">
             {% csrf_token %}
             <button type="submit">Remove</button>
           </form>
@@ -112,7 +96,7 @@
         {% for u in search_results %}
           <li>
             {{ u.username }}{% if u.email %} <span class="muted">({{ u.email }})</span>{% endif %}
-            <form method="post" action="/courses/{{ course.id }}/add-student/" style="display:inline">
+            <form method="post" action="/courses/{{ course.id }}/add-student/" class="inline">
               {% csrf_token %}
               <input type="hidden" name="query" value="{{ u.username }}">
               <button type="submit" name="action" value="enrol">Enrol</button>
@@ -164,3 +148,5 @@
     </ul>
   </section>
 {% endblock %}
+
+

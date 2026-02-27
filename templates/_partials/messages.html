@@ -1,0 +1,10 @@
+{% if messages %}
+<div class="panel messages-container" aria-live="polite">
+  <ul class="messages-list">
+    {% for message in messages %}
+      <li class="muted">{{ message }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
