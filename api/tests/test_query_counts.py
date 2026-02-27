@@ -9,6 +9,7 @@ from courses.models import Course, Enrolment
 
 
 @pytest.mark.django_db
+@pytest.mark.performance
 class TestQueryCounts(TestCase):
     def setUp(self):
         self.teacher = User.objects.create_user(username='tqc', password='pw')

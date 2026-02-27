@@ -25,6 +25,7 @@ def _setup_teacher_and_session():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.ws
 async def test_ws_rate_limit_allows_up_to_five_messages():
     course_id, sessionid = await _setup_teacher_and_session()
     headers = [(b"cookie", f"sessionid={sessionid}".encode())]

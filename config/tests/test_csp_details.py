@@ -5,6 +5,7 @@ from django.test import Client
 
 
 @pytest.mark.django_db
+@pytest.mark.security
 def test_csp_has_expected_directives():
     c = Client()
     r = c.get("/")
@@ -20,4 +21,3 @@ def test_csp_has_expected_directives():
     assert "connect-src" in csp and ("ws:" in csp or "wss:" in csp)
     # Disallow framing
     assert "frame-ancestors 'none'" in csp
-

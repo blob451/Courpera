@@ -53,6 +53,7 @@ def _http_get_history(course_id: int, sessionid: str):
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.ws
 async def test_ws_permissions_and_history_endpoint():
     teacher_id, student_id, other_id, course_id = await _setup_users_and_course()
 

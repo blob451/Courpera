@@ -10,6 +10,7 @@ from django.test.utils import CaptureQueriesContext
 
 
 @pytest.mark.django_db
+@pytest.mark.performance
 class TestMoreQueryCounts(TestCase):
     def setUp(self):
         self.teacher = User.objects.create_user(username="tqc2", password="pw")

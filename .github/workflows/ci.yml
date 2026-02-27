@@ -7,12 +7,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -24,12 +27,12 @@ jobs:
           DJANGO_SETTINGS_MODULE: config.settings.dev
         run: |
           python manage.py migrate --noinput
-      - name: Run tests with coverage
+      - name: Run tests with coverage (maxfail=1)
         working-directory: "Second Half/Project/Courpera"
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
         run: |
-          pytest -vv -ra --durations=10 --cov=. --cov-report=term-missing --cov-report=html --html=pytest_report.html --self-contained-html
+          pytest -vv -ra --durations=10 --maxfail=1 --cov=. --cov-report=term-missing --cov-report=html --cov-fail-under=75 --html=pytest_report.html --self-contained-html --junitxml=test-results.xml
       - name: Upload coverage HTML
         uses: actions/upload-artifact@v4
         with:
@@ -40,4 +43,8 @@ jobs:
         with:
           name: pytest-report
           path: "Second Half/Project/Courpera/pytest_report.html"
-
+      - name: Upload JUnit XML
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-xml
+          path: "Second Half/Project/Courpera/test-results.xml"

@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 
 @pytest.mark.django_db
+@pytest.mark.security
 @override_settings(REST_FRAMEWORK={
     "DEFAULT_PAGINATION_CLASS": "api.pagination.DefaultPagination",
     "PAGE_SIZE": 20,

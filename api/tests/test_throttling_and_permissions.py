@@ -7,6 +7,7 @@ from courses.models import Course
 
 
 @pytest.mark.django_db
+@pytest.mark.security
 @override_settings(REST_FRAMEWORK={
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.UserRateThrottle",
@@ -23,6 +24,7 @@ def test_anon_throttle_limits_requests():
 
 
 @pytest.mark.django_db
+@pytest.mark.security
 def test_teacher_only_course_create():
     teacher = User.objects.create_user(username='t', password='pw')
     student = User.objects.create_user(username='s', password='pw')
@@ -34,4 +36,3 @@ def test_teacher_only_course_create():
     assert r_ok.status_code in (200, 201)
     r_bad = cs.post('/api/v1/courses/', {'title': 'B', 'description': ''}, content_type='application/json')
     assert r_bad.status_code == 403
-
