@@ -14,8 +14,11 @@ a:hover, a:focus { text-decoration: underline; }
 .link-btn:hover, .link-btn:focus { text-decoration: underline; }
 
 /* Header/Nav layout */
-.header-nav { position: relative; display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.header-nav { position: relative; display: block; }
+.nav-row { display: flex; gap: .75rem; align-items: center; flex-wrap: nowrap; }
 .flex-spacer { flex: 1 1 auto; }
+.hdr-actions { display: flex; gap: .5rem; align-items: center; justify-content: flex-end; }
+.header-search input { width: 28rem; max-width: 50vw; }
 .breadcrumbs a { color: var(--cp-colour-primary); }
 .breadcrumbs .muted { color: var(--cp-colour-muted); }
 
@@ -91,3 +94,7 @@ a:hover, a:focus { text-decoration: underline; }
 /* Instructor section */
 .instructor { display: grid; grid-template-columns: 48px 1fr; gap: .5rem; align-items: center; }
 .instructor img { width: 48px; height: 48px; border-radius: 50%; }
+
+/* Panel heading for right-aligned actions */
+.panel-heading { position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .5rem; }
+.panel-heading .action-right { position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); }

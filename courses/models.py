@@ -19,6 +19,9 @@ class Course(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="owned_courses")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    # Teacher-editable syllabus and outcomes (one item per line)
+    syllabus = models.TextField(blank=True)
+    outcomes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -50,4 +53,3 @@ class Enrolment(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.student_id}->{self.course_id}"
-

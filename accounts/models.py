@@ -35,8 +35,11 @@ class UserProfile(models.Model):
     full_name = models.CharField(max_length=200, blank=True)
     phone = models.CharField(max_length=50, blank=True)
     student_number = models.CharField(max_length=50, blank=True)
+    # Instructor/teacher id (auto-assigned when role is teacher)
+    instructor_id = models.CharField(max_length=16, blank=True, null=True, unique=True)
 
-    # Placeholder for avatars; an external avatar URL or hash can be stored later
+    # Uploaded avatar (preferred when present) and optional external URL
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     avatar_url = models.URLField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -44,4 +47,3 @@ class UserProfile(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover (string repr convenience)
         return f"Profile<{self.user.username}:{self.role}>"
-

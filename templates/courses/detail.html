@@ -14,14 +14,16 @@
       {% endfor %}
     </nav>
     {% endif %}
-    <h2>{{ course.title }}</h2>
+    <div class="panel-heading">
+      <h2>{{ course.title }}</h2>
+      {% if owner_view %}<a class="btn-secondary action-right" href="/courses/{{ course.id }}/edit/">Edit course</a>{% endif %}
+    </div>
     {% if course.description %}
       <p>{{ course.description }}</p>
     {% endif %}
     <p class="muted">Teacher: {{ course.owner.username }}</p>
     <div class="hero-actions">
       {% if owner_view %}
-        <a class="btn" href="/courses/{{ course.id }}/edit/">Edit course</a>
       {% elif is_enrolled %}
         <form method="post" action="/courses/{{ course.id }}/unenrol/" class="inline">
           {% csrf_token %}
@@ -34,21 +36,29 @@
         </form>
       {% endif %}
       <a class="btn-link" href="/courses/{{ course.id }}/calendar.ics">Download calendar (.ics)</a>
-      <span class="badge">Flexible deadlines</span>
     </div>
   </section>
 
   {% if owner_view or is_enrolled %}
   <!-- Syllabus first -->
   <section class="panel">
-    <h3>Syllabus</h3>
+    <div class="panel-heading">
+      <h3>Syllabus</h3>
+      {% if owner_view %}<a class="btn-secondary action-right" href="/courses/{{ course.id }}/syllabus/edit/">Edit syllabus</a>{% endif %}
+    </div>
     <div class="accordion" data-accordion>
       <div class="accordion-item">
         <button type="button" class="accordion-button" aria-expanded="true" aria-controls="syllabus-panel">
           Weekly outline <span class="chev">›</span>
         </button>
         <div id="syllabus-panel" class="accordion-panel">
-          {% if course.materials.all %}
+          {% if syllabus_lines %}
+          <ul>
+            {% for it in syllabus_lines %}
+            <li>{{ it }}</li>
+            {% endfor %}
+          </ul>
+          {% elif course.materials.all %}
           <ul>
             {% for m in course.materials.all %}
             <li>{{ forloop.counter }}. {{ m.title }}</li>
@@ -64,16 +74,24 @@
           What you'll learn <span class="chev">›</span>
         </button>
         <div id="outcomes-panel" class="accordion-panel" hidden>
+          {% if outcome_lines %}
+          <ul>
+            {% for it in outcome_lines %}
+            <li>{{ it }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
           <ul>
             <li>Understand core concepts of the course.</li>
             <li>Work with real-world examples and exercises.</li>
             <li>Build confidence through hands-on practice.</li>
           </ul>
+          {% endif %}
         </div>
       </div>
     </div>
     <div class="instructor mt-2">
-      <img src="{% avatar_url course.owner 48 %}" alt="" referrerpolicy="no-referrer" />
+      <img src="{% avatar_url course.owner 48 %}" alt="" />
       <div>
         <div><strong>{{ course.owner.username }}</strong></div>
         {% if course.owner.profile.full_name %}
@@ -129,13 +147,16 @@
 
   {% if owner_view %}
   <section class="panel">
-    <h3>Roster & Add student</h3>
+    <h3>Course enrolment</h3>
     <p class="muted">Teacher-only view. Manage enrolments.</p>
     <ul>
       {% for e in roster %}
         <li>
-          <img src="{% avatar_url e.student 32 %}" alt="" class="avatar" referrerpolicy="no-referrer" />
+          <img src="{% avatar_url e.student 32 %}" alt="" class="avatar" />
           {{ e.student.username }}
+          {% with sid=e.student.profile.student_number %}
+            {% if sid %} ({{ sid }}){% else %} (S{{ e.student.id|stringformat:'07d' }}){% endif %}
+          {% endwith %}
           <form method="post" action="/courses/{{ course.id }}/remove/{{ e.student.id }}/" class="inline">
             {% csrf_token %}
             <button type="submit">Remove</button>
@@ -149,7 +170,7 @@
     <form method="post" action="/courses/{{ course.id }}/add-student/">
       {% csrf_token %}
       <div class="kv">
-        <label for="id_query">Username or e‑mail</label>
+        <label for="id_query">Username, e-mail, or Student ID</label>
         {{ add_form.query }}
       </div>
       <button type="submit" name="action" value="search">Search</button>
@@ -162,7 +183,11 @@
       <ul>
         {% for u in search_results %}
           <li>
-            {{ u.username }}{% if u.email %} <span class="muted">({{ u.email }})</span>{% endif %}
+            {{ u.username }}
+            {% with sid=u.profile.student_number %}
+              {% if sid %} ({{ sid }}){% else %} (S{{ u.id|stringformat:'07d' }}){% endif %}
+            {% endwith %}
+            {% if u.email %} <span class="muted">({{ u.email }})</span>{% endif %}
             <form method="post" action="/courses/{{ course.id }}/add-student/" class="inline">
               {% csrf_token %}
               <input type="hidden" name="query" value="{{ u.username }}">

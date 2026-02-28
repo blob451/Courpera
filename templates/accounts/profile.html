@@ -3,7 +3,7 @@
 {% block content %}
   <section class="panel">
     <h2>Edit Profile</h2>
-    <form method="post" action="">
+    <form method="post" action="" enctype="multipart/form-data">
       {% csrf_token %}
       {{ form.non_field_errors }}
       <div class="kv">
@@ -11,14 +11,19 @@
         {{ form.full_name }}
         <label for="id_phone">Phone</label>
         {{ form.phone }}
-        <label for="id_student_number">Student number</label>
-        {{ form.student_number }}
-        <label for="id_role">Role</label>
-        {{ form.role }}
+        <label for="id_avatar">Avatar (JPEG/PNG/WEBP, ≤2MB)</label>
+        {{ form.avatar }}
       </div>
+      {% if profile_obj.avatar %}
+        <p class="mt-2">
+          <img src="{{ profile_obj.avatar.url }}" alt="Current avatar" class="avatar" />
+          <button type="submit" name="remove_avatar" value="1" class="btn-link">Remove uploaded avatar</button>
+        </p>
+      {% else %}
+        <p class="muted mt-2">No uploaded avatar. A generated avatar will be used.</p>
+      {% endif %}
       <button type="submit">Save changes</button>
       <a href="/accounts/home/">Cancel</a>
     </form>
   </section>
 {% endblock %}
-

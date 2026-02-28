@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Edit Syllabus — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>Edit Syllabus — {{ course.title }}</h2>
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="kv">
+        <label for="id_syllabus">Weekly outline (one item per line)</label>
+        {{ form.syllabus }}
+        <label for="id_outcomes">What you'll learn (one per line)</label>
+        {{ form.outcomes }}
+      </div>
+      <button type="submit">Save</button>
+      <a href="/courses/{{ course.id }}/">Cancel</a>
+    </form>
+  </section>
+{% endblock %}
+

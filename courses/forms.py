@@ -1,9 +1,10 @@
-"""Forms for creating courses."""
+﻿"""Forms for creating courses."""
 from __future__ import annotations
 
 from django import forms
 
 from .models import Course
+from django import forms
 
 
 class CourseForm(forms.ModelForm):
@@ -14,11 +15,20 @@ class CourseForm(forms.ModelForm):
         fields = ("title", "description")
 
 
-class AddStudentForm(forms.Form):
-    """Teacher utility form to enrol a student by username or e‑mail.
+class SyllabusForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ("syllabus", "outcomes")
+        widgets = {
+            "syllabus": forms.Textarea(attrs={"rows": 8, "placeholder": "One item per line"}),
+            "outcomes": forms.Textarea(attrs={"rows": 6, "placeholder": "One outcome per line"}),
+        }
 
-    This keeps the UI simple. A richer search will be added in a later
-    stage. Validation ensures the user exists and holds the student role.
+
+class AddStudentForm(forms.Form):
+    """Teacher utility form to enrol a student by username, e-mail, or Student ID.
+
+    This keeps the UI simple.
     """
 
-    query = forms.CharField(label="Username or e‑mail", max_length=150)
+    query = forms.CharField(label="Username, e-mail, or Student ID", max_length=150)

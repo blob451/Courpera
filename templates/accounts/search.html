@@ -5,7 +5,7 @@
     <h2>User Search</h2>
     <form method="get" action="" class="kv" style="max-width:620px">
       <label for="q">Query</label>
-      <input id="q" name="q" type="search" value="{{ q }}" placeholder="Username or e‑mail" />
+      <input id="q" name="q" type="search" value="{{ q }}" placeholder="Username, e-mail, student ID or teacher ID" />
       <div></div>
       <button type="submit">Search</button>
     </form>
@@ -19,6 +19,11 @@
         <li>
           <strong>{{ u.username }}</strong>
           {% if u.profile and u.profile.role %}<span class="muted">({{ u.profile.role }})</span>{% endif %}
+          {% if u.profile and u.profile.role == 'student' and u.profile.student_number %}
+            <span class="muted"> ({{ u.profile.student_number }})</span>
+          {% elif u.profile and u.profile.role == 'teacher' and u.profile.instructor_id %}
+            <span class="muted"> ({{ u.profile.instructor_id }})</span>
+          {% endif %}
           {% if u.email %}<span class="muted"> — {{ u.email }}</span>{% endif %}
         </li>
       {% empty %}
@@ -28,4 +33,3 @@
   </section>
   {% endif %}
 {% endblock %}
-

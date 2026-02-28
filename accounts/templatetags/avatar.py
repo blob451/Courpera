@@ -14,9 +14,15 @@ def avatar_url(user, size: int = 48) -> str:
     Uses user.pk and a salt; does not expose e‑mail/username.
     """
     try:
-        seed_src = f"{getattr(user, 'pk', '0')}:{getattr(settings, 'AVATAR_SEED_SALT', 'courpera')}"
+        # Prefer uploaded avatar if present
+        prof = getattr(user, "profile", None)
+        if prof and getattr(prof, "avatar", None) and getattr(prof.avatar, "url", ""):
+            return prof.avatar.url
+        # Role-specific static default; keep deterministic query (size + seed)
+        role = getattr(getattr(user, "profile", None), "role", "student")
+        img = "avatar-teacher.svg" if role == "teacher" else "avatar-default.svg"
+        seed_src = f"{getattr(user, 'pk', '0')}:{getattr(settings, 'AVATAR_SEED_SALT', 'courpera')}:{role}"
         seed = hashlib.sha256(seed_src.encode()).hexdigest()
-        # Serve avatars via a same-origin proxy endpoint to avoid ORB blocking
-        return f"/accounts/avatar/{getattr(user, 'pk', 0)}/{size}/?seed={seed}&size={size}"
+        return f"/static/img/{img}?size={size}&seed={seed}"
     except Exception:
         return ""

@@ -2,54 +2,72 @@
   <h1><a href="/">Courpera</a></h1>
   <nav aria-label="Primary" class="header-nav">
     {% if request.user.is_authenticated %}
-      <a href="/accounts/home/">Home</a>
-      <a href="/courses/">Courses</a>
-      <span class="explore-wrap">
-        <button id="exploreBtn" class="btn-link" type="button" aria-haspopup="menu" aria-controls="explorePanel" aria-expanded="false">Explore</button>
-        <div id="explorePanel" class="explore-panel" role="menu" aria-label="Explore subjects">
-          <div class="explore-grid">
-            <div>
-              <strong class="muted">Subjects</strong>
-              <a href="/courses/?q=data">Data Science</a>
-              <a href="/courses/?q=computer">Computer Science</a>
-              <a href="/courses/?q=business">Business</a>
-              <a href="/courses/?q=personal">Personal Development</a>
-              <a href="/courses/?q=language">Language Learning</a>
-            </div>
-            <div>
-              <strong class="muted">Levels</strong>
-              <a href="/courses/?q=beginner">Beginner</a>
-              <a href="/courses/?q=intermediate">Intermediate</a>
-              <a href="/courses/?q=advanced">Advanced</a>
+      <div class="nav-row top">
+        <span class="flex-spacer"></span>
+        <div class="muted">
+          {% with role=request.user.profile.role|default:'student' %}
+            {% if role == 'teacher' %}
+              {% with uid=request.user.profile.instructor_id %}
+                Hi, {{ request.user.username }}{% if uid %} ({{ uid }}){% else %} (I{{ request.user.id|stringformat:'07d' }}){% endif %}!
+              {% endwith %}
+            {% else %}
+              {% with sid=request.user.profile.student_number %}
+                Hi, {{ request.user.username }}{% if sid %} ({{ sid }}){% else %} (S{{ request.user.id|stringformat:'07d' }}){% endif %}!
+              {% endwith %}
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+      <div class="nav-row bottom">
+        <a href="/accounts/home/">Home</a>
+        <a href="/courses/">Courses</a>
+        <span class="explore-wrap">
+          <button id="exploreBtn" class="btn-link" type="button" aria-haspopup="menu" aria-controls="explorePanel" aria-expanded="false">Explore</button>
+          <div id="explorePanel" class="explore-panel" role="menu" aria-label="Explore subjects">
+            <div class="explore-grid">
+              <div>
+                <strong class="muted">Subjects</strong>
+                <a href="/courses/?q=data">Data Science</a>
+                <a href="/courses/?q=computer">Computer Science</a>
+                <a href="/courses/?q=business">Business</a>
+                <a href="/courses/?q=personal">Personal Development</a>
+                <a href="/courses/?q=language">Language Learning</a>
+              </div>
+              <div>
+                <strong class="muted">Levels</strong>
+                <a href="/courses/?q=beginner">Beginner</a>
+                <a href="/courses/?q=intermediate">Intermediate</a>
+                <a href="/courses/?q=advanced">Advanced</a>
+              </div>
             </div>
           </div>
-        </div>
-      </span>
-      <span class="notif-wrap">
-        <button id="notifBtn" class="btn-link" type="button" aria-haspopup="dialog" aria-controls="notifPanel" aria-expanded="false">Notifications <span id="notifBadge" class="muted"></span></button>
-        <div id="notifPanel" class="notif-panel" role="dialog" aria-label="Recent notifications">
-          <strong>Recent</strong>
-          <ul id="notifList" class="notif-list"></ul>
-          <div>
-            <form method="post" action="/activity/notifications/mark-all-read/">
-              {% csrf_token %}
-              <button type="submit" class="btn-link">Mark all read</button>
-              <a href="/activity/notifications/">View all</a>
-            </form>
+        </span>
+        {% if request.user.profile and request.user.profile.role == 'teacher' %}
+        <form method="get" action="/accounts/search/" class="header-search">
+          <label for="hdrq" class="sr-only">Search users</label>
+          <input id="hdrq" name="q" type="search" placeholder="Search users (name, e-mail, ID)" class="input" />
+        </form>
+        {% endif %}
+        <span class="flex-spacer"></span>
+        <span class="notif-wrap">
+          <button id="notifBtn" class="btn-link" type="button" aria-haspopup="dialog" aria-controls="notifPanel" aria-expanded="false">Notifications <span id="notifBadge" class="muted"></span></button>
+          <div id="notifPanel" class="notif-panel" role="dialog" aria-label="Recent notifications">
+            <strong>Recent</strong>
+            <ul id="notifList" class="notif-list"></ul>
+            <div>
+              <form method="post" action="/activity/notifications/mark-all-read/">
+                {% csrf_token %}
+                <button type="submit" class="btn-link">Mark all read</button>
+                <a href="/activity/notifications/">View all</a>
+              </form>
+            </div>
           </div>
-        </div>
-      </span>
-      <form method="post" action="/accounts/logout/" class="logout-form">
-        {% csrf_token %}
-        <button type="submit" class="btn-link">Sign out</button>
-      </form>
-      <span class="flex-spacer"></span>
-      {% if request.user.profile and request.user.profile.role == 'teacher' %}
-      <form method="get" action="/accounts/search/" class="header-search">
-        <label for="hdrq" class="sr-only">Search users</label>
-        <input id="hdrq" name="q" type="search" placeholder="Search users…" class="input" />
-      </form>
-      {% endif %}
+        </span>
+        <form method="post" action="/accounts/logout/" class="logout-form">
+          {% csrf_token %}
+          <button type="submit" class="btn-link">Sign out</button>
+        </form>
+      </div>
     {% else %}
       <a href="/courses/">Courses</a>
       <a href="/accounts/login/">Sign in</a>

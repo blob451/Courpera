@@ -6,6 +6,9 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
 from .models import UserProfile, Role
+from django.core.exceptions import ValidationError
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 
 class RegistrationForm(UserCreationForm):
@@ -47,8 +50,48 @@ class RegistrationForm(UserCreationForm):
 
 
 class ProfileForm(forms.ModelForm):
-    """Simple form to edit profile contact fields and role."""
+    """Edit profile details and optional avatar upload (no role change)."""
+
+    avatar = forms.ImageField(required=False)
 
     class Meta:
         model = UserProfile
-        fields = ("full_name", "phone", "student_number", "role")
+        fields = ("full_name", "phone", "avatar")
+
+    def clean_avatar(self):
+        f = self.cleaned_data.get("avatar")
+        if not f:
+            return f
+        if getattr(f, "size", 0) > 2 * 1024 * 1024:  # 2 MB limit for avatars
+            raise ValidationError("Avatar must be 2 MB or smaller.")
+        ctype = getattr(f, "content_type", "")
+        if ctype not in ("image/jpeg", "image/png", "image/webp"):
+            raise ValidationError("Avatar must be JPEG, PNG, or WEBP.")
+        return f
+
+    def save(self, commit: bool = True):
+        profile: UserProfile = super().save(commit=False)
+        f = self.cleaned_data.get("avatar")
+        if f:
+            # Resize to max 256px and save as PNG to normalise (if Pillow available)
+            try:
+                from PIL import Image  # lazy import to avoid hard dependency at import time
+
+                img = Image.open(f)
+                img = img.convert("RGBA") if img.mode not in ("RGB", "RGBA") else img
+                img.thumbnail((256, 256))
+                buf = BytesIO()
+                img.save(buf, format="PNG", optimize=True)
+                profile.avatar.save(
+                    f"avatar_{profile.user_id}.png",
+                    ContentFile(buf.getvalue()),
+                    save=False,
+                )
+            except ImportError:
+                # If Pillow isn't installed, store the original upload as-is
+                profile.avatar = f
+            except Exception:
+                raise ValidationError("Invalid image file.")
+        if commit:
+            profile.save()
+        return profile

@@ -10,8 +10,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from accounts.decorators import role_required
 from accounts.models import Role
 from django.contrib.auth.models import User
-from django.db.models import Q
-from .forms import CourseForm, AddStudentForm
+from django.db.models import Q, CharField, F, Value
+from django.db.models.functions import Cast, Concat, Length, Substr
+import re
+from .forms import CourseForm, AddStudentForm, SyllabusForm
 from .models import Course, Enrolment
 from .models_feedback import Feedback
 from .forms_feedback import FeedbackForm
@@ -91,6 +93,10 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         # Initialise form with existing feedback if present
         existing = Feedback.objects.filter(course=course, student=request.user).first()
         feedback_form = FeedbackForm(instance=existing)
+    # Prepare syllabus/outcomes lines for rendering
+    def _split_lines(s: str) -> list[str]:
+        return [line.strip() for line in (s or "").splitlines() if line.strip()]
+
     ctx = {
         "course": course,
         "owner_view": owner_view,
@@ -100,6 +106,8 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "add_form": add_form,
         "feedback_form": feedback_form,
         "feedback_list": Feedback.objects.filter(course=course).select_related("student"),
+        "syllabus_lines": _split_lines(getattr(course, "syllabus", "")),
+        "outcome_lines": _split_lines(getattr(course, "outcomes", "")),
         "breadcrumbs": [
             ("/", "Home"),
             ("/courses/", "Courses"),
@@ -107,6 +115,24 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         ],
     }
     return render(request, "courses/detail.html", ctx)
+
+
+@login_required
+@role_required(Role.TEACHER)
+def course_syllabus_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    """Owner-only syllabus/outcomes editing for a course."""
+    course = get_object_or_404(Course, pk=pk)
+    if not course.is_owner(request.user):
+        raise PermissionDenied
+    if request.method == "POST":
+        form = SyllabusForm(request.POST, instance=course)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Syllabus updated.")
+            return redirect("courses:detail", pk=course.pk)
+    else:
+        form = SyllabusForm(instance=course)
+    return render(request, "courses/syllabus_edit.html", {"form": form, "course": course})
 
 
 @login_required
@@ -159,12 +185,26 @@ def course_add_student(request: HttpRequest, pk: int) -> HttpResponse:
             q = form.cleaned_data["query"].strip()
             action = request.POST.get("action", "enrol").lower()
             if action == "search":
-                # Partial, case-insensitive match on username or e‑mail; student role only
-                results = (
+                # Partial, case-insensitive; support username, email, stored Student ID,
+                # and substring matches on zero-padded numeric ID (e.g., '004' => S0000004)
+                base = (
                     User.objects.select_related("profile")
-                    .filter(Q(username__icontains=q) | Q(email__icontains=q))
+                    .annotate(id_str=Cast("id", output_field=CharField()))
+                    .annotate(pad=Concat(Value("0000000"), F("id_str")))
+                    .annotate(last7=Substr(F("pad"), Length(F("pad")) - Value(6), Value(7)))
+                )
+                qn = re.sub(r"\D", "", q)
+                filt = (
+                    Q(username__icontains=q)
+                    | Q(email__icontains=q)
+                    | Q(profile__student_number__icontains=q)
+                )
+                if qn:
+                    filt = filt | Q(last7__icontains=qn)
+                results = (
+                    base.filter(filt)
                     .filter(profile__role=Role.STUDENT)
-                    .order_by("username")[:20]
+                    .order_by("username")[:50]
                 )
                 roster = (
                     Enrolment.objects.filter(course=course)
@@ -181,10 +221,11 @@ def course_add_student(request: HttpRequest, pk: int) -> HttpResponse:
                     "searched": True,
                 }
                 return render(request, "courses/detail.html", ctx)
-            # Enrol flow: exact match on username or e‑mail
+            # Enrol flow: exact match on username or e-mail
             target = (
                 User.objects.select_related("profile").filter(username__iexact=q).first()
                 or User.objects.select_related("profile").filter(email__iexact=q).first()
+                or User.objects.select_related("profile").filter(profile__student_number__iexact=q).first()
             )
             if not target:
                 messages.error(request, "No user found for that username or e‑mail.")
@@ -193,8 +234,11 @@ def course_add_student(request: HttpRequest, pk: int) -> HttpResponse:
             if not profile or profile.role != Role.STUDENT:
                 messages.error(request, "User is not a student.")
                 return redirect("courses:detail", pk=course.pk)
-            Enrolment.objects.get_or_create(course=course, student=target)
-            messages.success(request, f"Enrolled {target.username}.")
+            obj, created = Enrolment.objects.get_or_create(course=course, student=target)
+            if created:
+                messages.success(request, f"Enrolled {target.username}.")
+            else:
+                messages.error(request, f"{target.username} is already enrolled.")
     return redirect("courses:detail", pk=course.pk)
 
 

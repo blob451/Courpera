@@ -5,7 +5,14 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
-from django.http import HttpRequest, HttpResponse, Http404, HttpResponseBadRequest
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    Http404,
+    HttpResponseBadRequest,
+    FileResponse,
+    HttpResponseRedirect,
+)
 from django.shortcuts import redirect, render
 from django.db.models import Q
 from django.contrib.auth.models import User
@@ -13,9 +20,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 from django.conf import settings
 import hashlib
-from urllib.request import Request, urlopen
+import re
 from urllib.parse import urlencode
-from urllib.error import URLError, HTTPError
+from django.contrib.staticfiles import finders
 
 from .decorators import role_required
 from .forms import RegistrationForm, ProfileForm
@@ -97,13 +104,27 @@ def home_student(request: HttpRequest) -> HttpResponse:
 @login_required
 @role_required(Role.TEACHER)
 def search_users(request: HttpRequest) -> HttpResponse:
-    """Teacher-only user search by username or e-mail (partial, case-insensitive)."""
+    """Teacher-only user search by username, e-mail, or IDs (partial, case-insensitive)."""
     q = (request.GET.get("q") or "").strip()
     results = []
     if q:
+        base_q = (
+            Q(username__icontains=q)
+            | Q(email__icontains=q)
+            | Q(profile__student_number__icontains=q)
+            | Q(profile__instructor_id__icontains=q)
+        )
+        # Fallback: support I######## pattern by user id if instructor_id not yet set
+        m = re.fullmatch(r"[iI](\d{1,9})", q)
+        if m:
+            try:
+                uid = int(m.group(1))
+                base_q = base_q | Q(id=uid)
+            except Exception:
+                pass
         results = (
             User.objects.select_related("profile")
-            .filter(Q(username__icontains=q) | Q(email__icontains=q))
+            .filter(base_q)
             .order_by("username")[:50]
         )
     return render(request, "accounts/search.html", {"q": q, "results": results})
@@ -113,14 +134,25 @@ def search_users(request: HttpRequest) -> HttpResponse:
 def profile_edit(request: HttpRequest) -> HttpResponse:
     profile = request.user.profile
     if request.method == "POST":
-        form = ProfileForm(request.POST, instance=profile)
+        # Remove uploaded avatar when requested
+        if request.POST.get("remove_avatar") == "1":
+            if getattr(profile, "avatar", None):
+                try:
+                    profile.avatar.delete(save=False)
+                except Exception:
+                    pass
+                profile.avatar = None
+                profile.save(update_fields=["avatar"])
+                messages.success(request, "Avatar removed.")
+                return redirect("accounts:profile")
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, "Profile updated.")
             return redirect("accounts:home")
     else:
         form = ProfileForm(instance=profile)
-    return render(request, "accounts/profile.html", {"form": form})
+    return render(request, "accounts/profile.html", {"form": form, "profile_obj": profile})
 
 
 @require_GET
@@ -141,32 +173,18 @@ def avatar_proxy(request: HttpRequest, user_id: int, size: int) -> HttpResponse:
     except User.DoesNotExist as exc:  # pragma: no cover - edge
         raise Http404("user not found") from exc
 
-    # Compute deterministic seed
-    seed_src = f"{getattr(user, 'pk', '0')}:{getattr(settings, 'AVATAR_SEED_SALT', 'courpera')}"
+    # Compute deterministic seed; vary by profile role to produce distinct defaults
+    role = getattr(getattr(user, "profile", None), "role", "student")
+    seed_src = f"{getattr(user, 'pk', '0')}:{getattr(settings, 'AVATAR_SEED_SALT', 'courpera')}:{role}"
     seed = hashlib.sha256(seed_src.encode()).hexdigest()
 
-    base = getattr(settings, "AVATAR_BASE_URL", "https://api.dicebear.com/7.x")
-    style = getattr(settings, "AVATAR_STYLE", "initials")
-    params = {
-        "seed": seed,
-        "size": size,
-        "backgroundColor": "lightgray",
-    }
-    url = f"{base}/{style}/png?{urlencode(params)}"
-
-    try:
-        req = Request(url, headers={"User-Agent": "Courpera/1.0"})
-        with urlopen(req, timeout=5) as resp:
-            data = resp.read()
-            ctype = resp.headers.get("Content-Type", "image/png")
-    except (URLError, HTTPError):  # pragma: no cover - network
-        # Fallback: transparent 1x1 PNG
-        transparent_png = (
-            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0bIDATx\x9cc``\x00\x00\x00\x02\x00\x01E\x1d\xc2\x02\x00\x00\x00\x00IEND\xaeB`\x82"
-        )
-        data = transparent_png
-        ctype = "image/png"
-
-    r = HttpResponse(data, content_type=ctype)
-    r["Cache-Control"] = "public, max-age=86400"
-    return r
+    # Serve role-specific default avatar from local static to avoid network dependency
+    img_name = "avatar-default.svg" if role == "student" else "avatar-teacher.svg"
+    rel_path = f"img/{img_name}"
+    abs_path = finders.find(rel_path)
+    if not abs_path:
+        return HttpResponseBadRequest("avatar asset missing")
+    # Stream the static file for reliable decoding and caching
+    resp = FileResponse(open(abs_path, "rb"), content_type="image/svg+xml")
+    resp["Cache-Control"] = "public, max-age=86400"
+    return resp
