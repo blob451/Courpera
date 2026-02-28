@@ -17,6 +17,7 @@ from .forms import CourseForm, AddStudentForm, SyllabusForm
 from .models import Course, Enrolment
 from .models_feedback import Feedback
 from .forms_feedback import FeedbackForm
+from assignments.models import Assignment, Attempt
 
 
 def _is_enrolled(user, course: Course) -> bool:
@@ -70,7 +71,7 @@ def course_edit(request: HttpRequest, pk: int) -> HttpResponse:
             return redirect("courses:detail", pk=course.pk)
     else:
         form = CourseForm(instance=course)
-    return render(request, "courses/create.html", {"form": form})
+    return render(request, "courses/create.html", {"form": form, "is_edit": True, "course": course})
 
 
 @login_required
@@ -97,6 +98,38 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
     def _split_lines(s: str) -> list[str]:
         return [line.strip() for line in (s or "").splitlines() if line.strip()]
 
+    # Compute assignment availability and readiness for display
+    assignments = Assignment.objects.filter(course=course, is_published=True).order_by("title")
+    now = __import__("datetime").datetime.now(tz=None)
+    # Use Django timezone to avoid naive
+    from django.utils import timezone as _tz
+    now = _tz.now()
+    ann = []
+    for a in assignments:
+        if a.type == 'quiz':
+            from assignments.utils import quiz_readiness
+            setattr(a, 'ready_info', quiz_readiness(a))
+        else:
+            setattr(a, 'ready_info', None)
+        setattr(a, 'avail_ok', (a.available_from is None) or (now >= a.available_from))
+        ann.append(a)
+
+    # Attempts left for enrolled students
+    if is_enrolled and not owner_view:
+        ids = [a.id for a in ann]
+        if ids:
+            from django.db.models import Count as _Count
+            used = (
+                Attempt.objects.filter(assignment_id__in=ids, student=request.user)
+                .values("assignment_id")
+                .annotate(c=_Count("id"))
+            )
+            used_map = {row["assignment_id"]: row["c"] for row in used}
+            for a in ann:
+                u = used_map.get(a.id, 0)
+                setattr(a, "attempts_used", u)
+                setattr(a, "attempts_left", max(0, (a.attempts_allowed or 0) - u))
+
     ctx = {
         "course": course,
         "owner_view": owner_view,
@@ -106,6 +139,8 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "add_form": add_form,
         "feedback_form": feedback_form,
         "feedback_list": Feedback.objects.filter(course=course).select_related("student"),
+        # Show published assignments on course page for both teacher and enrolled students
+        "assignments": ann,
         "syllabus_lines": _split_lines(getattr(course, "syllabus", "")),
         "outcome_lines": _split_lines(getattr(course, "outcomes", "")),
         "breadcrumbs": [

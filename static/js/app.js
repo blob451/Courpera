@@ -189,6 +189,30 @@
     });
   }
 
+  function initConfirms(){
+    // Attach a single delegated handler to capture clicks and submit events
+    document.addEventListener('click', function(e){
+      var el = e.target.closest('[data-confirm]');
+      if(!el) return;
+      var msg = el.getAttribute('data-confirm');
+      if(!msg) return;
+      try {
+        var ok = window.confirm(msg);
+        if(!ok){ e.preventDefault(); e.stopPropagation(); }
+      } catch(_){}
+    }, true);
+    document.addEventListener('submit', function(e){
+      var el = e.target.closest('[data-confirm]');
+      if(!el) return;
+      var msg = el.getAttribute('data-confirm');
+      if(!msg) return;
+      try {
+        var ok = window.confirm(msg);
+        if(!ok){ e.preventDefault(); e.stopPropagation(); }
+      } catch(_){}
+    }, true);
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
     initNotifications();
     initExplore();
@@ -196,5 +220,6 @@
     initAccordion();
     initMaterials();
     initChat();
+    initConfirms();
   });
 })();

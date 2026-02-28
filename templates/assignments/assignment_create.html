@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Create Assignment — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>Create assignment — {{ course.title }}</h3>
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="kv">
+        <label for="id_type">Type</label>
+        {{ form.type }}
+        {{ form.type.errors }}
+        <label for="id_title">Title</label>
+        {{ form.title }}
+        {{ form.title.errors }}
+        <label for="id_instructions">Instructions</label>
+        {{ form.instructions }}
+        {{ form.instructions.errors }}
+        <label for="id_available_from">Available from</label>
+        {{ form.available_from }}
+        {{ form.available_from.errors }}
+        <label for="id_deadline">Deadline</label>
+        {{ form.deadline }}
+        {{ form.deadline.errors }}
+        <label for="id_attempts_allowed">Attempts</label>
+        {{ form.attempts_allowed }}
+        {{ form.attempts_allowed.errors }}
+      </div>
+      <button type="submit" class="btn">Create</button>
+      <a href="/assignments/course/{{ course.id }}/">Cancel</a>
+    </form>
+  </section>
+{% endblock %}

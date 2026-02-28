@@ -21,6 +21,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("courses/", include("courses.urls")),
     path("materials/", include("materials.urls")),
+    path("assignments/", include("assignments.urls")),
     path("activity/", include("activity.urls")),
     path("messaging/", include("messaging.urls")),
     path("", include("ui.urls")),  # public index

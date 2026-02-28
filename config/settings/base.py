@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "messaging",
     "ui",
     "api",
+    "assignments",
 ]
 
 # Optional: include sidecar if installed to serve local Swagger/Redoc assets

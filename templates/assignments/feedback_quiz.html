@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load assign_utils %}
+{% block title %}Quiz Feedback — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>{{ assignment.title }} — Feedback</h3>
+    <p class="muted">Score: {{ score }}%</p>
+    <ol>
+      {% for q in questions %}
+        <li>
+          <div><strong>{{ q.text }}</strong></div>
+          <ul>
+            {% for c in q.choices.all %}
+              {% with correct=c.is_correct chosen=answers|get_item:q.id %}
+                {% if c.id == chosen and not c.is_correct %}
+                  <li class="answer wrong">{{ c.text }} (your answer)</li>
+                {% elif c.is_correct %}
+                  <li class="answer correct">{{ c.text }}{% if c.id == chosen %} (your answer){% endif %}</li>
+                {% else %}
+                  <li>{{ c.text }}</li>
+                {% endif %}
+              {% endwith %}
+            {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+    </ol>
+    <a class="btn-secondary" href="/assignments/course/{{ assignment.course.id }}/">Back to assignments</a>
+  </section>
+{% endblock %}

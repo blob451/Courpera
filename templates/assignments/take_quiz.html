@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Take Quiz — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>{{ assignment.title }}</h3>
+    {% if assignment.deadline %}<p class="muted">Due {{ assignment.deadline }}</p>{% endif %}
+    {% if attempts_left is not None %}
+      <p class="muted">Attempts left: {{ attempts_left }} of {{ assignment.attempts_allowed }}</p>
+    {% endif %}
+    <form method="post" action="/assignments/{{ assignment.id }}/submit/">
+      {% csrf_token %}
+      <ol>
+        {% for q in questions %}
+          <li>
+            <div><strong>{{ q.text }}</strong></div>
+            {% for c in q.choices.all %}
+            <div>
+              <label>
+                <input type="radio" name="answer_{{ q.id }}" value="{{ c.id }}" /> {{ c.text }}
+              </label>
+            </div>
+            {% endfor %}
+          </li>
+        {% endfor %}
+      </ol>
+      <button type="submit" class="btn">Submit attempt</button>
+    </form>
+  </section>
+{% endblock %}

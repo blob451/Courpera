@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Assignment — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>{{ assignment.title }}</h3>
+    {% if assignment.deadline %}<p class="muted">Due {{ assignment.deadline }}</p>{% endif %}
+    {% if attempts_left is not None %}
+      <p class="muted">Attempts left: {{ attempts_left }} of {{ assignment.attempts_allowed }}</p>
+    {% endif %}
+    <p class="muted">Submission for {{ assignment.get_type_display }} will be added in a later iteration.</p>
+    <a class="btn-secondary" href="/assignments/course/{{ assignment.course.id }}/">Back</a>
+  </section>
+{% endblock %}

@@ -1,9 +1,13 @@
 {% extends "base.html" %}
+{% load avatar %}
 {% block title %}Edit Profile — {{ block.super }}{% endblock %}
 {% block content %}
   <section class="panel">
     <h2>Edit Profile</h2>
-    <form method="post" action="" enctype="multipart/form-data">
+    <div class="mb-2">
+      <img src="{% avatar_url request.user 64 %}" alt="{{ request.user.username }}" class="avatar-lg" />
+    </div>
+    <form method="post" action="" enctype="multipart/form-data" class="profile-form">
       {% csrf_token %}
       {{ form.non_field_errors }}
       <div class="kv">
@@ -15,7 +19,7 @@
         {{ form.email }}
         <label for="id_current_password">Current password</label>
         {{ form.current_password }}
-        <label for="id_avatar">Avatar (JPEG/PNG/WEBP, ≤2MB)</label>
+        <label class="nowrap" for="id_avatar">Avatar (JPEG/PNG/WEBP, &le; 2&nbsp;MB)</label>
         {{ form.avatar }}
       </div>
       {% if profile_obj.avatar %}
@@ -26,7 +30,7 @@
       {% else %}
         <p class="muted mt-2">No uploaded avatar. A generated avatar will be used.</p>
       {% endif %}
-      <button type="submit">Save changes</button>
+      <button type="submit" class="btn">Save changes</button>
       <a class="btn-secondary" href="/accounts/password/change/">Update password</a>
       <a href="/accounts/home/">Cancel</a>
     </form>

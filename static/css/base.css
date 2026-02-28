@@ -45,6 +45,39 @@ a:hover, a:focus { text-decoration: underline; }
 .pw-list { list-style: disc; padding-left: 1.2rem; margin: .25rem 0; }
 .pw-list li.ok { color: #2a7; }
 .pw-list li.bad { color: #c33; }
+/* Quiz feedback */
+.answer.correct { color: #2a7; font-weight: 600; }
+.answer.wrong { color: #c33; font-weight: 600; }
+
+/* Quiz manage layout */
+.answer-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.answer-actions { display: inline-flex; align-items: center; gap: .5rem; }
+.choice-add { display: flex; align-items: center; gap: .5rem; }
+.choice-add .input-sm { min-width: 14rem; }
+
+/* Form/input utilities */
+.input-sm { padding: .25rem .4rem; font-size: .95rem; }
+.w-50 { width: 50%; }
+.w-40 { width: 40%; }
+.nowrap { white-space: nowrap; }
+
+/* Page-specific forms sizing */
+.profile-form .kv { grid-template-columns: 220px 1fr; }
+.profile-form .kv input,
+.profile-form .kv select,
+.profile-form .kv textarea { max-width: 28rem; }
+.profile-form .kv input[type="file"] { justify-self: end; }
+.change-pw-form .kv input { max-width: 22rem; }
+.materials-form .kv input[type="text"],
+.materials-form .kv input[type="file"] { max-width: 26rem; }
+.enrol-form .kv input[type="text"],
+.enrol-form .kv input[type="search"] { max-width: 22rem; }
+.course-form .kv { grid-template-columns: 200px 1fr; }
+.course-form .kv input,
+.course-form .kv textarea { max-width: 36rem; }
+
+/* Larger avatar on profile */
+.avatar-lg { width: 64px; height: 64px; border-radius: 50%; }
 
 /* Messages */
 .messages-container { max-width: 960px; margin: 0 auto 1rem auto; }
@@ -54,7 +87,7 @@ a:hover, a:focus { text-decoration: underline; }
 .input { padding: .35rem .5rem; border: 1px solid var(--cp-colour-border); border-radius: var(--cp-radius-1); font: inherit; }
 .btn { display: inline-flex; align-items: center; justify-content: center; padding: .45rem .75rem; border-radius: var(--cp-radius-1); border: 1px solid transparent; background: var(--cp-colour-primary); color: #fff; font: inherit; cursor: pointer; text-decoration: none; line-height: 1.2; }
 .btn:hover, .btn:focus { filter: brightness(0.95); }
-.btn-secondary { display: inline-flex; align-items: center; justify-content: center; padding: .45rem .75rem; border-radius: var(--cp-radius-1); border: 1px solid var(--cp-colour-primary); background: transparent; color: var(--cp-colour-primary); text-decoration: none; line-height: 1.2; }
+.btn-secondary { display: inline-flex; align-items: center; justify-content: center; padding: .45rem .75rem; border-radius: var(--cp-radius-1); border: 1px solid var(--cp-colour-primary); background: transparent; color: var(--cp-colour-primary); text-decoration: none; line-height: 1.2; font: inherit; } 
 .btn-secondary:hover, .btn-secondary:focus { background: rgba(42,115,204,0.06); }
 .btn-link { background: none; border: 0; padding: 0; color: var(--cp-colour-primary); cursor: pointer; font: inherit; }
 .btn-link:hover, .btn-link:focus { text-decoration: underline; }
@@ -84,6 +117,13 @@ a:hover, a:focus { text-decoration: underline; }
 .hero { display: grid; gap: .5rem; }
 .hero-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
 .badge { display: inline-block; font-size: .8rem; color: var(--cp-colour-primary); border: 1px solid var(--cp-colour-primary); border-radius: var(--cp-radius-1); padding: .1rem .4rem; }
+/* Variant for muted badges (e.g., Draft) */
+.badge-muted { color: var(--cp-colour-muted); border-color: var(--cp-colour-muted); }
+
+/* Disabled button state */
+.btn[disabled], .btn:disabled, .btn-secondary[disabled], .btn-secondary:disabled {
+  opacity: .6; cursor: not-allowed;
+}
 
 /* Accordion */
 .accordion { border-top: 1px solid var(--cp-colour-border); }

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Take Exam — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>{{ assignment.title }}</h3>
+    {% if assignment.deadline %}<p class="muted">Due {{ assignment.deadline }}</p>{% endif %}
+    {% if attempts_left is not None %}
+      <p class="muted">Attempts left: {{ attempts_left }} of {{ assignment.attempts_allowed }}</p>
+    {% endif %}
+    {% if assignment.instructions %}<p>{{ assignment.instructions }}</p>{% endif %}
+    <form method="post" action="/assignments/{{ assignment.id }}/submit/">
+      {% csrf_token %}
+      <ol>
+        {% for q in questions %}
+          <li>
+            <label for="id_text_{{ q.id }}"><strong>{{ q.text }}</strong></label>
+            <textarea id="id_text_{{ q.id }}" name="text_{{ q.id }}" rows="4" class="w-50 input-sm" required></textarea>
+          </li>
+        {% endfor %}
+      </ol>
+      <button type="submit" class="btn">Submit exam</button>
+    </form>
+  </section>
+{% endblock %}

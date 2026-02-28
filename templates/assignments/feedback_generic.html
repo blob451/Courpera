@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Assignment Submitted — {{ block.super }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h3>{{ assignment.title }}</h3>
+    <p class="muted">Your submission has been recorded.</p>
+    <a class="btn-secondary" href="/assignments/course/{{ assignment.course.id }}/">Back to assignments</a>
+  </section>
+{% endblock %}
+

@@ -1,9 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Create Course — {{ block.super }}{% endblock %}
+{% block title %}{% if is_edit %}Edit Course{% else %}Create Course{% endif %} - {{ block.super }}{% endblock %}
 {% block content %}
   <section class="panel">
-    <h2>Create a course</h2>
-    <form method="post" action="">
+    <div class="panel-heading">
+      <h2>{% if is_edit %}Edit course{% else %}Create a course{% endif %}</h2>
+      {% if is_edit %}
+        <a href="/courses/{{ course.id }}/" class="btn-secondary action-right">Back to course</a>
+      {% endif %}
+    </div>
+    <form method="post" action="" class="course-form">
       {% csrf_token %}
       {{ form.non_field_errors }}
       <div class="kv">
@@ -12,9 +17,13 @@
         <label for="id_description">Description</label>
         {{ form.description }}
       </div>
-      <button type="submit">Create</button>
-      <a href="/courses/">Cancel</a>
+      {% if is_edit %}
+        <button type="submit" class="btn">Update course</button>
+        <a href="/courses/{{ course.id }}/" class="btn-secondary">Cancel</a>
+      {% else %}
+        <button type="submit" class="btn">Create course</button>
+        <a href="/courses/" class="btn-secondary">Cancel</a>
+      {% endif %}
     </form>
   </section>
 {% endblock %}
-

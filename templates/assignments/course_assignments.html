@@ -1,0 +1,67 @@
+﻿{% extends "base.html" %}
+{% block title %}Assignments - {{ block.super }}{% endblock %} 
+{% load assign_utils %}
+{% block content %}
+  <section class="panel">
+    <div class="panel-heading">
+      <h3>Assignments for {{ course.title }}</h3>
+      <div class="action-right">
+        <a class="btn-secondary" href="/courses/{{ course.id }}/">Return to course</a>
+        {% if owner_view %}
+          <a class="btn" href="/assignments/course/{{ course.id }}/create/">Create assignment</a>
+        {% endif %}
+      </div>
+    </div>
+    {% if assignments %}
+      <ul>
+      {% for a in assignments %}
+        <li>
+          <strong>{{ a.title }}</strong> - {{ a.get_type_display }}{% if a.deadline %} <span class="muted">(Due {{ a.deadline }} — {{ a.deadline|time_until }})</span>{% endif %}
+          {% if owner_view %}
+            {% if a.is_published %}
+              <span class="badge">Published</span>
+            {% else %}
+              <span class="badge badge-muted">Draft</span>
+            {% endif %}
+            {% if a.ready_info and not a.ready_info.ready %}
+              <span class="muted">[Needs corrections]</span>
+            {% endif %}
+            <form method="post" action="/assignments/{{ a.id }}/delete/" class="inline" data-confirm="Delete this assignment? This cannot be undone.">
+              {% csrf_token %}
+              <button type="submit" class="btn-link">Delete</button>
+            </form>
+            {% if a.type == 'quiz' %}
+              <a class="btn-link" href="/assignments/{{ a.id }}/quiz/">Manage</a>
+            {% else %}
+              <a class="btn-link" href="/assignments/{{ a.id }}/manage/">Manage</a>
+            {% endif %}
+          {% else %}
+            {% if a.type == 'quiz' %}
+              {% if a.ready_info and a.ready_info.ready and a.is_published and a.avail_ok %}
+                <a class="btn-link" href="/assignments/{{ a.id }}/take/">Open</a>
+                <span class="muted">(Attempts left: {{ a.attempts_left }}/{{ a.attempts_allowed }})</span>
+              {% elif a.is_published and not a.avail_ok %}
+                <span class="muted">(Not available yet — opens in {{ a.available_from|time_until }})</span>
+              {% else %}
+                <span class="muted">(Not available)</span>
+              {% endif %}
+            {% else %}
+              {% if a.is_published and a.avail_ok %}
+                <a class="btn-link" href="/assignments/{{ a.id }}/take/">Open</a>
+                <span class="muted">(Attempts left: {{ a.attempts_left }}/{{ a.attempts_allowed }})</span>
+              {% elif a.is_published and not a.avail_ok %}
+                <span class="muted">(Not available yet — opens in {{ a.available_from|time_until }})</span>
+              {% else %}
+                <span class="muted">(Not available)</span>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+      </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No assignments yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+
