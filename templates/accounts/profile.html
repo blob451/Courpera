@@ -11,6 +11,10 @@
         {{ form.full_name }}
         <label for="id_phone">Phone</label>
         {{ form.phone }}
+        <label for="id_email">E‑mail</label>
+        {{ form.email }}
+        <label for="id_current_password">Current password</label>
+        {{ form.current_password }}
         <label for="id_avatar">Avatar (JPEG/PNG/WEBP, ≤2MB)</label>
         {{ form.avatar }}
       </div>
@@ -23,6 +27,7 @@
         <p class="muted mt-2">No uploaded avatar. A generated avatar will be used.</p>
       {% endif %}
       <button type="submit">Save changes</button>
+      <a class="btn-secondary" href="/accounts/password/change/">Update password</a>
       <a href="/accounts/home/">Cancel</a>
     </form>
   </section>

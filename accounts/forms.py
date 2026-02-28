@@ -1,8 +1,8 @@
-"""Forms for user registration and profile editing."""
+"""Forms for user registration, login, profile editing, and password reset."""
 from __future__ import annotations
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 
 from .models import UserProfile, Role
@@ -21,17 +21,28 @@ class RegistrationForm(UserCreationForm):
 
     email = forms.EmailField(required=True)
     role = forms.ChoiceField(choices=Role.choices, initial=Role.STUDENT)
+    secret_word = forms.CharField(
+        required=True,
+        min_length=6,
+        widget=forms.PasswordInput,
+        help_text="Used to restore your password (min 6 characters).",
+    )
 
     class Meta:
         model = User
-        fields = ("username", "email", "role", "password1", "password2")
+        fields = ("username", "email", "role", "secret_word", "password1", "password2")
 
     def save(self, commit: bool = True) -> User:
         user = super().save(commit)
         # Update or create profile role selection
         profile, _ = UserProfile.objects.get_or_create(user=user)
         profile.role = self.cleaned_data.get("role") or Role.STUDENT
-        profile.save(update_fields=["role"])  # explicit for clarity
+        # Save secret word as a hash
+        from django.contrib.auth.hashers import make_password
+
+        sw = (self.cleaned_data.get("secret_word") or "").strip()
+        profile.secret_word_hash = make_password(sw) if sw else ""
+        profile.save(update_fields=["role", "secret_word_hash"])  # explicit for clarity
         return user
 
     def clean_email(self):
@@ -48,15 +59,50 @@ class RegistrationForm(UserCreationForm):
             raise forms.ValidationError("This username is already taken.")
         return username
 
+    def clean(self):
+        cleaned = super().clean()
+        sw = (cleaned.get("secret_word") or "").strip().lower()
+        pw1 = (cleaned.get("password1") or "").strip().lower()
+        uname = (cleaned.get("username") or "").strip().lower()
+        email = (cleaned.get("email") or "").strip().lower()
+        if sw and (sw == pw1 or sw == uname or (email and sw == email)):
+            raise forms.ValidationError("Secret word must not equal your password, username, or e‑mail.")
+        return cleaned
+
+
+class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        self.fields["username"].label = "Username or e‑mail"
+
+    def clean(self):
+        cleaned = super().clean()
+        login = self.cleaned_data.get("username") or ""
+        if "@" in login:
+            from django.contrib.auth import get_user_model
+            UserModel = get_user_model()
+            user = UserModel.objects.filter(email__iexact=login.strip()).first()
+            if user:
+                self.cleaned_data["username"] = user.get_username()
+        return cleaned
+
 
 class ProfileForm(forms.ModelForm):
-    """Edit profile details and optional avatar upload (no role change)."""
+    """Edit profile details, e‑mail, and optional avatar upload (no role change)."""
 
     avatar = forms.ImageField(required=False)
+    email = forms.EmailField(required=True)
+    current_password = forms.CharField(required=True, widget=forms.PasswordInput, help_text="Confirm to change e‑mail")
 
     class Meta:
         model = UserProfile
         fields = ("full_name", "phone", "avatar")
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        if self.user:
+            self.fields["email"].initial = getattr(self.user, "email", "")
 
     def clean_avatar(self):
         f = self.cleaned_data.get("avatar")
@@ -72,6 +118,18 @@ class ProfileForm(forms.ModelForm):
     def save(self, commit: bool = True):
         profile: UserProfile = super().save(commit=False)
         f = self.cleaned_data.get("avatar")
+        # Email change: verify current password and uniqueness
+        if self.user:
+            email = (self.cleaned_data.get("email") or "").strip().lower()
+            pwd = self.cleaned_data.get("current_password") or ""
+            if not self.user.check_password(pwd):
+                raise ValidationError("Current password is incorrect.")
+            if User.objects.filter(email__iexact=email).exclude(pk=self.user.pk).exists():
+                raise ValidationError("This e‑mail is already in use.")
+            self.user.email = email
+            if commit:
+                self.user.save(update_fields=["email"]) 
+
         if f:
             # Resize to max 256px and save as PNG to normalise (if Pillow available)
             try:
@@ -95,3 +153,18 @@ class ProfileForm(forms.ModelForm):
         if commit:
             profile.save()
         return profile
+
+
+class SecretResetForm(forms.Form):
+    identifier = forms.CharField(label="Username or e‑mail", max_length=150)
+    secret_word = forms.CharField(widget=forms.PasswordInput, min_length=6)
+    new_password1 = forms.CharField(widget=forms.PasswordInput)
+    new_password2 = forms.CharField(widget=forms.PasswordInput)
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("new_password1")
+        p2 = cleaned.get("new_password2")
+        if p1 and p2 and p1 != p2:
+            raise ValidationError("Passwords do not match.")
+        return cleaned

@@ -37,6 +37,8 @@ class UserProfile(models.Model):
     student_number = models.CharField(max_length=50, blank=True)
     # Instructor/teacher id (auto-assigned when role is teacher)
     instructor_id = models.CharField(max_length=16, blank=True, null=True, unique=True)
+    # Secret word for password recovery (hashed via Django make_password)
+    secret_word_hash = models.CharField(max_length=128, blank=True)
 
     # Uploaded avatar (preferred when present) and optional external URL
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)

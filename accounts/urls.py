@@ -9,6 +9,9 @@ from .views import (
     home_student,
     profile_edit,
     search_users,
+    CourperaPasswordChangeView,
+    password_change_done,
+    password_forgot,
     avatar_proxy,
 )
 
@@ -18,6 +21,9 @@ urlpatterns = [
     path("login/", CourperaLoginView.as_view(), name="login"),
     path("logout/", CourperaLogoutView.as_view(), name="logout"),
     path("register/", register, name="register"),
+    path("password/change/", CourperaPasswordChangeView.as_view(), name="password-change"),
+    path("password/change/done/", password_change_done, name="password-change-done"),
+    path("password/forgot/", password_forgot, name="password-forgot"),
     path("home/", home, name="home"),
     path("home/teacher/", home_teacher, name="home-teacher"),
     path("home/student/", home_student, name="home-student"),

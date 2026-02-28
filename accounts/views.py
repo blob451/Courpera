@@ -4,7 +4,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.http import (
     HttpRequest,
     HttpResponse,
@@ -25,7 +25,12 @@ from urllib.parse import urlencode
 from django.contrib.staticfiles import finders
 
 from .decorators import role_required
-from .forms import RegistrationForm, ProfileForm
+from .forms import (
+    RegistrationForm,
+    ProfileForm,
+    EmailOrUsernameAuthenticationForm,
+    SecretResetForm,
+)
 from .models import Role
 from activity.forms import StatusForm
 from activity.models import Status
@@ -33,6 +38,7 @@ from activity.models import Status
 
 class CourperaLoginView(LoginView):
     template_name = "registration/login.html"
+    form_class = EmailOrUsernameAuthenticationForm
 
     def post(self, request: HttpRequest, *args, **kwargs):
         # Simple per-session login throttle: max 10 attempts/min to reduce brute force
@@ -145,14 +151,61 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
                 profile.save(update_fields=["avatar"])
                 messages.success(request, "Avatar removed.")
                 return redirect("accounts:profile")
-        form = ProfileForm(request.POST, request.FILES, instance=profile)
+        form = ProfileForm(request.POST, request.FILES, instance=profile, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Profile updated.")
             return redirect("accounts:home")
     else:
-        form = ProfileForm(instance=profile)
+        form = ProfileForm(instance=profile, user=request.user)
     return render(request, "accounts/profile.html", {"form": form, "profile_obj": profile})
+
+
+class CourperaPasswordChangeView(PasswordChangeView):
+    template_name = "registration/password_change_form.html"
+    success_url = "/accounts/password/change/done/"
+
+
+@login_required
+def password_change_done(request: HttpRequest) -> HttpResponse:
+    return render(request, "registration/password_change_done.html")
+
+
+def password_forgot(request: HttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        # Throttle: limit to 5 attempts per 10 minutes per session
+        ts = request.session.get("pw_reset_ts", [])
+        now = __import__("time").time()
+        ts = [t for t in ts if now - t < 600]
+        if len(ts) >= 5:
+            messages.error(request, "Too many reset attempts. Please wait and try again.")
+            return render(request, "accounts/password_forgot.html", {"form": SecretResetForm()})
+        form = SecretResetForm(request.POST)
+        if form.is_valid():
+            ident = (form.cleaned_data["identifier"] or "").strip()
+            from django.contrib.auth import get_user_model
+            UserModel = get_user_model()
+            user = UserModel.objects.filter(username__iexact=ident).first() or UserModel.objects.filter(email__iexact=ident).first()
+            if not user:
+                messages.error(request, "Account not found.")
+            else:
+                prof = getattr(user, "profile", None)
+                from django.contrib.auth.hashers import check_password
+                ok = bool(prof and prof.secret_word_hash and check_password(form.cleaned_data["secret_word"], prof.secret_word_hash))
+                if not ok:
+                    messages.error(request, "Secret word does not match.")
+                else:
+                    user.set_password(form.cleaned_data["new_password1"])
+                    user.save(update_fields=["password"])
+                    messages.success(request, "Password has been reset. You can now sign in.")
+                    ts.append(now)
+                    request.session["pw_reset_ts"] = ts
+                    return redirect("accounts:login")
+        ts.append(now)
+        request.session["pw_reset_ts"] = ts
+    else:
+        form = SecretResetForm()
+    return render(request, "accounts/password_forgot.html", {"form": form})
 
 
 @require_GET

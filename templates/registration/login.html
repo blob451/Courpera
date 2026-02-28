@@ -7,14 +7,14 @@
       {% csrf_token %}
       {{ form.non_field_errors }}
       <div class="kv">
-        <label for="id_username">Username</label>
+        <label for="id_username">Username or e‑mail</label>
         {{ form.username }}
         <label for="id_password">Password</label>
         {{ form.password }}
       </div>
       <p class="muted">No account? <a href="/accounts/register/">Register</a>.</p>
+      <p class="muted">Forgot password? <a href="/accounts/password/forgot/">Recover with secret word</a>.</p>
       <button type="submit">Sign in</button>
     </form>
   </section>
 {% endblock %}
-

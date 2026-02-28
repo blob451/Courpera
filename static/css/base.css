@@ -41,6 +41,10 @@ a:hover, a:focus { text-decoration: underline; }
 .notif-panel { display: none; position: absolute; background: #fff; border: 1px solid var(--cp-colour-border); padding: .5rem; border-radius: var(--cp-radius-2); width: 500px; max-width: 90vw; z-index: 1000; left: 0; right: auto; top: calc(100% + .25rem); }
 .notif-panel.open { display: block; }
 .notif-list { margin: .5rem 0; padding-left: 1rem; }
+/* Password checker */
+.pw-list { list-style: disc; padding-left: 1.2rem; margin: .25rem 0; }
+.pw-list li.ok { color: #2a7; }
+.pw-list li.bad { color: #c33; }
 
 /* Messages */
 .messages-container { max-width: 960px; margin: 0 auto 1rem auto; }
