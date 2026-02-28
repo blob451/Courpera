@@ -9,7 +9,7 @@ from .models import Assignment, QuizQuestion, QuizAnswerChoice, AssignmentType
 class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
-        fields = ("type", "title", "instructions", "available_from", "deadline", "attempts_allowed")
+        fields = ("type", "title", "instructions", "available_from", "deadline", "attempts_allowed", "max_marks")
         widgets = {
             "instructions": forms.Textarea(attrs={"rows": 4}),
             # Use a local datetime input for better UX (browser-native picker)
@@ -24,16 +24,8 @@ class AssignmentForm(forms.ModelForm):
         self.fields["type"].choices = list(_AT.choices)
         if not self.initial.get("type"):
             self.fields["type"].initial = _AT.QUIZ
-        # Add client-side min attribute to date inputs (current local time)
-        try:
-            now = timezone.localtime(timezone.now(), timezone.get_current_timezone())
-            now_str = now.strftime("%Y-%m-%dT%H:%M")
-            if "available_from" in self.fields:
-                self.fields["available_from"].widget.attrs.setdefault("min", now_str)
-            if "deadline" in self.fields:
-                self.fields["deadline"].widget.attrs.setdefault("min", now_str)
-        except Exception:
-            pass
+        # For create form, avoid strict client-side min to prevent browser prompts;
+        # server-side validation enforces correctness.
         # Ensure initial deadline renders in the widget format if present
         if self.instance and self.instance.deadline:
             d = self.instance.deadline
@@ -92,6 +84,21 @@ class AssignmentForm(forms.ModelForm):
                 pass
         return val
 
+    def clean_max_marks(self):
+        mm = self.cleaned_data.get("max_marks")
+        # Allow omission to keep current or default value
+        if mm in (None, ""):
+            if getattr(self, "instance", None) and getattr(self.instance, "pk", None):
+                return getattr(self.instance, "max_marks", 100.0)
+            return 100.0
+        try:
+            mm = float(mm)
+        except Exception:
+            raise forms.ValidationError("Invalid maximum marks.")
+        if mm <= 0:
+            raise forms.ValidationError("Maximum marks must be greater than zero.")
+        return mm
+
 
 class QuizQuestionForm(forms.ModelForm):
     class Meta:
@@ -109,7 +116,7 @@ class QuizAnswerChoiceForm(forms.ModelForm):
 class AssignmentMetaForm(forms.ModelForm):
     class Meta:
         model = Assignment
-        fields = ("title", "instructions", "available_from", "deadline", "attempts_allowed")
+        fields = ("title", "instructions", "available_from", "deadline", "attempts_allowed", "max_marks")
         widgets = {
             "deadline": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "available_from": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
@@ -182,3 +189,23 @@ class AssignmentMetaForm(forms.ModelForm):
             except Exception:
                 pass
         return val
+
+    def clean_max_marks(self):
+        mm = self.cleaned_data.get("max_marks")
+        if mm in (None, ""):
+            if getattr(self, "instance", None) and getattr(self.instance, "pk", None):
+                return getattr(self.instance, "max_marks", 100.0)
+            return 100.0
+        try:
+            mm = float(mm)
+        except Exception:
+            raise forms.ValidationError("Invalid maximum marks.")
+        if mm <= 0:
+            raise forms.ValidationError("Maximum marks must be greater than zero.")
+        return mm
+
+
+class GradeAttemptForm(forms.Form):
+    marks_awarded = forms.FloatField(min_value=0.0)
+    feedback_text = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    override_reason = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))

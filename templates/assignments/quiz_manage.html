@@ -7,17 +7,18 @@
       <div class="action-right">
         <span class="muted">{% if assignment.is_published %}Published{% else %}Draft{% endif %}</span>
         {% if not locked %}
-        <form method="post" action="" class="inline">
+        <form method="post" action="" class="inline" novalidate>
           {% csrf_token %}
           {% if not assignment.is_published %}
             <input type="hidden" name="action" value="publish" />
-            <button type="submit" class="btn" {% if not ready_info.ready %}disabled title="Add at least one question; each must have exactly one correct answer and at least two choices."{% endif %}>Publish</button>
+            <button type="submit" class="btn" formnovalidate {% if not ready_info.ready %}disabled title="Add at least one question; each must have exactly one correct answer and at least two choices."{% endif %}>Publish</button>
           {% else %}
             <input type="hidden" name="action" value="unpublish" />
-            <button type="submit" class="btn-secondary" data-confirm="Unpublish this assignment? Students won't be able to submit until republished.">Unpublish</button>
+            <button type="submit" class="btn-secondary" formnovalidate data-confirm="Unpublish this assignment? Students won't be able to submit until republished.">Unpublish</button>
           {% endif %}
         </form>
         {% endif %}
+        <a href="/assignments/{{ assignment.id }}/attempts/" class="btn-secondary">Attempts</a>
         <a href="/assignments/course/{{ assignment.course.id }}/" class="btn-secondary">Back to assignments</a>
       </div>
     </div>
@@ -55,6 +56,11 @@
         {{ meta_form.attempts_allowed.errors }}
         <div></div>
         <p class="muted">At least 1; cannot be less than attempts already used.</p>
+        <label for="id_max_marks">Max marks</label>
+        {{ meta_form.max_marks }}
+        {{ meta_form.max_marks.errors }}
+        <div></div>
+        <p class="muted">Default 100. Used in course percentage.</p>
       </div> 
       <button type="submit" name="action" value="update_meta" class="btn-secondary">Save details</button> 
     </form> 
@@ -95,7 +101,7 @@
                   {% if c.is_correct %}
                     <span class="muted">[Correct]</span>
                   {% elif not locked %}
-                    <form method="post" action="" class="inline" data-confirm="Delete this answer?">
+                    <form method="post" action="" class="inline">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="mark_correct" />
                       <input type="hidden" name="choice_id" value="{{ c.id }}" />
@@ -103,7 +109,7 @@
                     </form>
                   {% endif %}
                   {% if not locked %}
-                    <form method="post" action="" class="inline">
+                    <form method="post" action="" class="inline" data-confirm="Delete this answer?">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="delete_choice" />
                       <input type="hidden" name="choice_id" value="{{ c.id }}" />

@@ -21,8 +21,9 @@ from .models import (
     Attempt,
     StudentAnswer,
 )
-from .forms import AssignmentForm, QuizQuestionForm, QuizAnswerChoiceForm, AssignmentMetaForm 
-from .utils import grade_quiz, quiz_readiness
+from .forms import AssignmentForm, QuizQuestionForm, QuizAnswerChoiceForm, AssignmentMetaForm, GradeAttemptForm 
+from .utils import grade_quiz, quiz_readiness, upsert_grade_for_attempt
+from activity.models import Notification
 
 
 def _is_teacher_owner(user, course: Course) -> bool:
@@ -72,6 +73,41 @@ def assignment_create(request, course_id: int):
     if not _is_teacher_owner(request.user, course):
         raise PermissionDenied
     if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        # Support quick actions without triggering HTML5 validation
+        if action == "set_available_now":
+            data = request.POST.copy()
+            data["available_from"] = timezone.localtime(timezone.now(), timezone.get_current_timezone()).strftime("%Y-%m-%dT%H:%M")
+            form = AssignmentForm(data)
+            return render(request, "assignments/assignment_create.html", {"form": form, "course": course})
+        if action == "set_deadline_delta":
+            delta_str = (request.POST.get("deadline_delta") or "").strip()
+            mapping = {
+                "1d": timedelta(days=1),
+                "3d": timedelta(days=3),
+                "1w": timedelta(weeks=1),
+                "2w": timedelta(weeks=2),
+                "1m": timedelta(days=30),
+                "3m": timedelta(days=90),
+            }
+            td = mapping.get(delta_str)
+            data = request.POST.copy()
+            try:
+                base_str = data.get("available_from") or ""
+                base = None
+                if base_str:
+                    # Parse naive local from widget and make aware
+                    from datetime import datetime as _dt
+                    base_naive = _dt.strptime(base_str, "%Y-%m-%dT%H:%M")
+                    base = timezone.make_aware(base_naive, timezone.get_current_timezone())
+            except Exception:
+                base = None
+            base = base or timezone.localtime(timezone.now(), timezone.get_current_timezone())
+            if td is not None:
+                data["deadline"] = (base + td).strftime("%Y-%m-%dT%H:%M")
+            form = AssignmentForm(data)
+            return render(request, "assignments/assignment_create.html", {"form": form, "course": course})
+        # Normal create
         form = AssignmentForm(request.POST)
         if form.is_valid():
             a = form.save(commit=False)
@@ -124,6 +160,16 @@ def quiz_manage(request, pk: int):
         action = request.POST.get("action", "") 
         # Meta updates allowed even if locked 
         if action == "update_meta": 
+            # Apply attempts update defensively even if other fields are invalid
+            try:
+                new_attempts = int((request.POST.get("attempts_allowed") or "").strip() or 0)
+                if new_attempts >= 1:
+                    used = Attempt.objects.filter(assignment=a).count()
+                    if new_attempts >= used and new_attempts != a.attempts_allowed:
+                        a.attempts_allowed = new_attempts
+                        a.save(update_fields=["attempts_allowed"]) 
+            except Exception:
+                pass
             meta_form = AssignmentMetaForm(request.POST, instance=a) 
             if meta_form.is_valid(): 
                 meta_form.save() 
@@ -351,7 +397,23 @@ def assignment_submit(request, pk: int):
             selected[q.id] = cid
         res = grade_quiz(a, selected)
         attempt.score = res["score"]
-        attempt.save(update_fields=["score"]) 
+        # Compute marks and release; upsert grade for best-of policy
+        attempt.marks_awarded = round((attempt.score or 0.0) / 100.0 * float(a.max_marks or 100.0), 2)
+        attempt.released = True
+        attempt.released_at = timezone.now()
+        attempt.save(update_fields=["score", "marks_awarded", "released", "released_at"]) 
+        upsert_grade_for_attempt(attempt, release=True)
+        # Notify student of auto-released quiz marks
+        try:
+            Notification.objects.create(
+                user=request.user,
+                actor=None,
+                type=Notification.TYPE_GRADE,
+                course=a.course,
+                message=f"Grade released for {a.title}: {attempt.marks_awarded}/{a.max_marks}",
+            )
+        except Exception:
+            pass
         return redirect("assignments:feedback", attempt_id=attempt.id)
     if a.type == AssignmentType.PAPER:
         # Expect file under 'submission_file'
@@ -413,6 +475,93 @@ def attempt_feedback(request, attempt_id: int):
 
 @login_required
 @role_required(Role.TEACHER)
+def assignment_attempts(request, pk: int):
+    """List attempts for an assignment (teacher view).
+
+    - For Paper/Exam: visible after deadline; used for marking and release.
+    - For Quiz: available for manual override of marks (optional), though quiz marks are auto-released on submit.
+    """
+    a = get_object_or_404(Assignment.objects.select_related("course"), pk=pk)
+    if not _is_teacher_owner(request.user, a.course):
+        raise PermissionDenied
+    now = timezone.now()
+    if a.type in (AssignmentType.PAPER, AssignmentType.EXAM):
+        if a.deadline and now < a.deadline:
+            messages.error(request, "Attempts list is available after the deadline.")
+            return redirect("assignments:manage", pk=a.pk if a.type != AssignmentType.QUIZ else a.pk)
+    attempts = (
+        Attempt.objects.filter(assignment=a)
+        .select_related("student")
+        .order_by("student__username", "submitted_at")
+    )
+    grade_form = GradeAttemptForm()
+    return render(request, "assignments/attempts_list.html", {"assignment": a, "attempts": attempts, "grade_form": grade_form, "now": now})
+
+
+@login_required
+@role_required(Role.TEACHER)
+def attempt_grade(request, attempt_id: int):
+    att = get_object_or_404(Attempt.objects.select_related("assignment", "student", "assignment__course"), pk=attempt_id)
+    a = att.assignment
+    if not _is_teacher_owner(request.user, a.course):
+        raise PermissionDenied
+    # Paper/Exam grading allowed after deadline; Quiz override allowed anytime
+    if a.type in (AssignmentType.PAPER, AssignmentType.EXAM):
+        if a.deadline and timezone.now() < a.deadline:
+            messages.error(request, "Cannot grade before the deadline.")
+            return redirect("assignments:attempts", pk=a.pk)
+    if request.method != "POST":
+        return redirect("assignments:attempts", pk=a.pk)
+    form = GradeAttemptForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid grading input.")
+        return redirect("assignments:attempts", pk=a.pk)
+    marks_awarded = float(form.cleaned_data["marks_awarded"])
+    feedback_text = form.cleaned_data.get("feedback_text") or ""
+    override_reason = form.cleaned_data.get("override_reason") or ""
+    # Bounds check
+    max_marks = float(a.max_marks or 100.0)
+    if marks_awarded < 0 or marks_awarded > max_marks:
+        messages.error(request, f"Marks must be between 0 and {max_marks}.")
+        return redirect("assignments:attempts", pk=a.pk)
+    # For quiz override, require reason if changing from auto grade
+    if a.type == AssignmentType.QUIZ:
+        auto_marks = round((float(att.score or 0.0) / 100.0) * max_marks, 2) if att.score is not None else None
+        if auto_marks is not None and round(marks_awarded, 2) != round(auto_marks, 2) and not override_reason.strip():
+            messages.error(request, "Override requires a reason.")
+            return redirect("assignments:attempts", pk=a.pk)
+
+    # Persist grading
+    att.marks_awarded = marks_awarded
+    att.feedback_text = feedback_text
+    att.override_reason = override_reason
+    att.graded_by = request.user
+    att.graded_at = timezone.now()
+    # Release immediately for both manual grading and overrides
+    att.released = True
+    att.released_at = timezone.now()
+    att.save(update_fields=["marks_awarded", "feedback_text", "override_reason", "graded_by", "graded_at", "released", "released_at"])
+
+    upsert_grade_for_attempt(att, release=True)
+
+    # Notify student on release
+    try:
+        Notification.objects.create(
+            user=att.student,
+            actor=request.user,
+            type=Notification.TYPE_GRADE,
+            course=a.course,
+            message=f"Grade released for {a.title}: {att.marks_awarded}/{a.max_marks}",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "Grade saved and released.")
+    return redirect("assignments:attempts", pk=a.pk)
+
+
+@login_required
+@role_required(Role.TEACHER)
 def assignment_manage(request, pk: int):
     """Generic manage view for Paper/Exam assignments.
 
@@ -432,6 +581,16 @@ def assignment_manage(request, pk: int):
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action == "update_meta":
+            # Apply attempts update defensively even if other fields are invalid
+            try:
+                new_attempts = int((request.POST.get("attempts_allowed") or "").strip() or 0)
+                if new_attempts >= 1:
+                    used = Attempt.objects.filter(assignment=a).count()
+                    if new_attempts >= used and new_attempts != a.attempts_allowed:
+                        a.attempts_allowed = new_attempts
+                        a.save(update_fields=["attempts_allowed"]) 
+            except Exception:
+                pass
             meta_form = AssignmentMetaForm(request.POST, instance=a)
             if meta_form.is_valid():
                 meta_form.save()

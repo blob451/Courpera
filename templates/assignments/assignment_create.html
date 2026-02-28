@@ -17,14 +17,31 @@
         {{ form.instructions }}
         {{ form.instructions.errors }}
         <label for="id_available_from">Available from</label>
-        {{ form.available_from }}
+        <div class="answer-row">
+          {{ form.available_from }}
+          <button type="submit" name="action" value="set_available_now" class="btn-link" formnovalidate>Now</button>
+        </div>
         {{ form.available_from.errors }}
         <label for="id_deadline">Deadline</label>
-        {{ form.deadline }}
+        <div class="answer-row">
+          {{ form.deadline }}
+          <select name="deadline_delta" class="input-sm">
+            <option value="1d">One day</option>
+            <option value="3d">Three days</option>
+            <option value="1w">One week</option>
+            <option value="2w">Two weeks</option>
+            <option value="1m">One month</option>
+            <option value="3m">Three months</option>
+          </select>
+          <button type="submit" name="action" value="set_deadline_delta" class="btn-link" formnovalidate>Set</button>
+        </div>
         {{ form.deadline.errors }}
         <label for="id_attempts_allowed">Attempts</label>
         {{ form.attempts_allowed }}
         {{ form.attempts_allowed.errors }}
+        <label for="id_max_marks">Max marks</label>
+        {{ form.max_marks }}
+        {{ form.max_marks.errors }}
       </div>
       <button type="submit" class="btn">Create</button>
       <a href="/assignments/course/{{ course.id }}/">Cancel</a>

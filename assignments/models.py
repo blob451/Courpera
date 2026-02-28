@@ -21,6 +21,8 @@ class Assignment(models.Model):
     # New: availability date/time when students can access the assignment
     available_from = models.DateTimeField(null=True, blank=True)
     deadline = models.DateTimeField(null=True, blank=True)
+    # Stage 16.01: maximum marks for this assignment (used for grading)
+    max_marks = models.FloatField(default=100.0)
     attempts_allowed = models.PositiveSmallIntegerField(default=1)
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -79,6 +81,14 @@ class Attempt(models.Model):
     attempt_no = models.PositiveSmallIntegerField(default=1)
     submitted_at = models.DateTimeField(default=timezone.now)
     score = models.FloatField(null=True, blank=True)
+    # Stage 16.01: marking fields
+    marks_awarded = models.FloatField(null=True, blank=True)
+    graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="graded_attempts")
+    graded_at = models.DateTimeField(null=True, blank=True)
+    feedback_text = models.TextField(blank=True)
+    override_reason = models.TextField(blank=True)
+    released = models.BooleanField(default=False, db_index=True)
+    released_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-submitted_at"]
@@ -105,3 +115,32 @@ class StudentTextAnswer(models.Model):
 class StudentFileSubmission(models.Model):
     attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name="file_submissions")
     file = models.FileField(upload_to="assignment_submissions/")
+
+
+class Grade(models.Model):
+    """A per-student grade record for an assignment.
+
+    This is kept in sync on submission/release and is used for fast
+    gradebook queries and course percentage calculations.
+    """
+
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="grades")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="grades")
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="grades")
+    attempt = models.ForeignKey(Attempt, on_delete=models.SET_NULL, null=True, blank=True, related_name="grade_records")
+    achieved_marks = models.FloatField(default=0.0)
+    max_marks = models.FloatField(default=100.0)
+    released_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("assignment", "student")
+        indexes = [
+            models.Index(fields=["assignment", "student"]),
+            models.Index(fields=["course", "student"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Grade {self.student_id}/{self.assignment_id}: {self.achieved_marks}/{self.max_marks}"

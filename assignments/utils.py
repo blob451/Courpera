@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Dict, Any
 
-from .models import Assignment, QuizQuestion, QuizAnswerChoice
+from django.utils import timezone
+from django.db import transaction
+
+from .models import Assignment, QuizQuestion, QuizAnswerChoice, Attempt, Grade, AssignmentType
+from courses.models import Course
+from django.contrib.auth import get_user_model
 
 
 def grade_quiz(assignment: Assignment, selected: dict[int, int]) -> dict[str, Any]:
@@ -60,3 +65,88 @@ def quiz_readiness(assignment: Assignment) -> dict[str, Any]:
         if q.choices.count() < 2:
             issues.append(f"Question {q.order or q.id}: must have at least two answer choices.")
     return {"ready": len(issues) == 0, "issues": issues}
+
+
+@transaction.atomic
+def upsert_grade_for_attempt(attempt: Attempt, *, release: bool = False, override_reason: str | None = None) -> Grade:
+    """Create or update the Grade record in response to an attempt.
+
+    Behaviour:
+    - Quiz: take the best attempt to date (by marks_awarded). Attempts are auto-released.
+    - Paper/Exam: use the latest attempt; release is manual (release=True when teacher releases).
+    - When overriding a quiz grade, an override_reason should be provided by the teacher.
+    """
+    a = attempt.assignment
+    student = attempt.student
+    # Compute marks_awarded if not set (e.g., quiz submission path)
+    if attempt.marks_awarded is None:
+        if a.type == AssignmentType.QUIZ:
+            # Attempt.score is a percentage out of 100
+            try:
+                score = float(attempt.score or 0.0)
+            except Exception:
+                score = 0.0
+            attempt.marks_awarded = round((score / 100.0) * float(a.max_marks or 100.0), 2)
+        else:
+            attempt.marks_awarded = 0.0
+        attempt.save(update_fields=["marks_awarded"])  # keep existing timestamps
+
+    # Find or create grade record
+    grade, _ = Grade.objects.select_for_update().get_or_create(
+        assignment=a,
+        course=a.course,
+        student=student,
+        defaults={
+            "attempt": attempt,
+            "achieved_marks": attempt.marks_awarded or 0.0,
+            "max_marks": a.max_marks or 100.0,
+            "released_at": timezone.now() if release else None,
+        },
+    )
+
+    if a.type == AssignmentType.QUIZ:
+        # Keep the best marks across attempts
+        current_best = float(grade.achieved_marks or 0.0)
+        new_marks = float(attempt.marks_awarded or 0.0)
+        if new_marks >= current_best or grade.attempt is None:
+            grade.attempt = attempt
+            grade.achieved_marks = new_marks
+            grade.max_marks = float(a.max_marks or 100.0)
+            # Quizzes auto-release
+            grade.released_at = grade.released_at or timezone.now()
+            grade.save(update_fields=["attempt", "achieved_marks", "max_marks", "released_at", "updated_at"])
+            # Mark attempt as released
+            if not attempt.released:
+                attempt.released = True
+                attempt.released_at = timezone.now()
+                attempt.save(update_fields=["released", "released_at"])
+    else:
+        # Paper/Exam: latest attempt policy; update only when explicitly released
+        grade.attempt = attempt
+        grade.achieved_marks = float(attempt.marks_awarded or 0.0)
+        grade.max_marks = float(a.max_marks or 100.0)
+        if release:
+            grade.released_at = timezone.now()
+            if not attempt.released:
+                attempt.released = True
+                attempt.released_at = timezone.now()
+                attempt.save(update_fields=["released", "released_at"])
+        grade.save(update_fields=["attempt", "achieved_marks", "max_marks", "released_at", "updated_at"])
+
+    return grade
+
+
+def compute_course_percentage(course: Course, student) -> float:
+    """Compute a student's percentage in a course from Grade records.
+
+    Only counts published assignments.
+    """
+    qs = Grade.objects.filter(course=course, student=student, assignment__is_published=True)
+    totals = list(qs.values_list("achieved_marks", "max_marks"))
+    if not totals:
+        return 0.0
+    achieved = sum(float(a or 0.0) for a, _ in totals)
+    maximum = sum(float(m or 0.0) for _, m in totals) or 0.0
+    if maximum <= 0.0:
+        return 0.0
+    return round((achieved / maximum) * 100.0, 2)
