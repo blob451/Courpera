@@ -202,13 +202,31 @@
   {% endif %}
 
   {% if not owner_view and is_enrolled %}
+  <section class="panel">
+    <div class="panel-heading">
+      <h3>Your Grades</h3>
+    </div>
+    {% if student_grades and student_grades.grades %}
+      <ul>
+        {% for g in student_grades.grades %}
+          <li>{{ g.assignment.title }}: {{ g.achieved_marks }}/{{ g.max_marks }}</li>
+        {% endfor %}
+      </ul>
+      <p><strong>Course:</strong> {{ student_grades.percent }}%</p>
+    {% else %}
+      <p class="muted">No released grades yet.</p>
+    {% endif %}
+  </section>
   {% endif %}
 
   <section class="panel">
     <div class="panel-heading">
       <h3>Assignments</h3>
       {% if owner_view %}
-        <a class="btn-secondary action-right" href="/assignments/course/{{ course.id }}/">Manage assignments</a>
+        <div class="action-right">
+          <a class="btn-secondary" href="/courses/{{ course.id }}/gradebook/">Gradebook</a>
+          <a class="btn-secondary" href="/assignments/course/{{ course.id }}/">Manage assignments</a>
+        </div>
       {% elif is_enrolled %}
         <a class="btn-secondary action-right" href="/assignments/course/{{ course.id }}/">View assignments</a>
       {% endif %}

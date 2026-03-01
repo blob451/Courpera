@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load assign_utils %}
+{% block title %}Gradebook - {{ course.title }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <div class="panel-heading">
+      <h3>Gradebook - {{ course.title }}</h3>
+      <div class="action-right">
+        <a class="btn-secondary" href="/courses/{{ course.id }}/gradebook.csv">Export CSV</a>
+        <a class="btn-secondary" href="/courses/{{ course.id }}/">Back to course</a>
+      </div>
+    </div>
+    {% if enrolments %}
+    <div class="grid">
+      <div class="grid-2">
+        <div class="muted">Students: {{ enrolments|length }}</div>
+        <div class="muted">Assignments: {{ assignments|length }}</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            {% for a in assignments %}
+              <th>{{ a.title }}</th>
+            {% endfor %}
+            <th>Course %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in enrolments %}
+            <tr>
+              <td>
+                {{ e.student.username }}
+                {% with sid=e.student.profile.student_number %}
+                  {% if sid %} ({{ sid }}){% else %} (S{{ e.student.id|stringformat:'07d' }}){% endif %}
+                {% endwith %}
+              </td>
+              {% for a in assignments %}
+                {% with row=grade_rows|get_item:e.student.id %}
+                  {% with g=row|get_item:a.id %}
+                    <td>
+                      {% if g %}
+                        {{ g.achieved_marks }}/{{ g.max_marks }}
+                      {% else %}
+                        &mdash;
+                      {% endif %}
+                    </td>
+                  {% endwith %}
+                {% endwith %}
+              {% endfor %}
+              <td>{{ course_pct|get_item:e.student.id|default_if_none:0 }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="muted">No enrolled students.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+
+

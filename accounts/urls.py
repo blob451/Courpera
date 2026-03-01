@@ -13,6 +13,7 @@ from .views import (
     password_change_done,
     password_forgot,
     avatar_proxy,
+    student_grades,
 )
 
 app_name = "accounts"
@@ -30,4 +31,5 @@ urlpatterns = [
     path("profile/", profile_edit, name="profile"),
     path("search/", search_users, name="search"),
     path("avatar/<int:user_id>/<int:size>/", avatar_proxy, name="avatar-proxy"),
+    path("grades/", student_grades, name="grades"),
 ]

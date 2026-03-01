@@ -6,6 +6,8 @@ from .views import (
     course_edit,
     course_syllabus_edit,
     course_detail,
+    course_gradebook,
+    course_gradebook_csv,
     course_enrol,
     course_unenrol,
     course_feedback,
@@ -28,4 +30,6 @@ urlpatterns = [
     path("<int:pk>/calendar.ics", course_calendar, name="calendar"),
     path("<int:pk>/remove/<int:user_id>/", course_remove_student, name="remove"),
     path("<int:pk>/add-student/", course_add_student, name="add-student"),
+    path("<int:pk>/gradebook/", course_gradebook, name="gradebook"),
+    path("<int:pk>/gradebook.csv", course_gradebook_csv, name="gradebook-csv"),
 ]

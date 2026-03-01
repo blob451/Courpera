@@ -4,7 +4,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import role_required
@@ -17,7 +17,9 @@ from .forms import CourseForm, AddStudentForm, SyllabusForm
 from .models import Course, Enrolment
 from .models_feedback import Feedback
 from .forms_feedback import FeedbackForm
-from assignments.models import Assignment, Attempt
+from assignments.models import Assignment, Attempt, Grade
+from assignments.utils import compute_course_percentage
+import csv
 
 
 def _is_enrolled(user, course: Course) -> bool:
@@ -130,6 +132,17 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
                 setattr(a, "attempts_used", u)
                 setattr(a, "attempts_left", max(0, (a.attempts_allowed or 0) - u))
 
+    # Student grades summary for this course (if enrolled)
+    student_grades = None
+    if is_enrolled and not owner_view:
+        released = (
+            Grade.objects.filter(course=course, student=request.user, assignment__is_published=True)
+            .select_related("assignment")
+            .order_by("assignment__title")
+        )
+        total_pct = compute_course_percentage(course, request.user)
+        student_grades = {"grades": released, "percent": total_pct}
+
     ctx = {
         "course": course,
         "owner_view": owner_view,
@@ -141,6 +154,7 @@ def course_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "feedback_list": Feedback.objects.filter(course=course).select_related("student"),
         # Show published assignments on course page for both teacher and enrolled students
         "assignments": ann,
+        "student_grades": student_grades,
         "syllabus_lines": _split_lines(getattr(course, "syllabus", "")),
         "outcome_lines": _split_lines(getattr(course, "outcomes", "")),
         "breadcrumbs": [
@@ -278,6 +292,90 @@ def course_add_student(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+@role_required(Role.TEACHER)
+def course_gradebook(request: HttpRequest, pk: int) -> HttpResponse:
+    """Teacher gradebook view: students x assignments matrix with course %.
+
+    Owner-only; lists only published assignments.
+    """
+    course = get_object_or_404(Course, pk=pk)
+    if not course.is_owner(request.user):
+        raise PermissionDenied
+    assignments = list(Assignment.objects.filter(course=course, is_published=True).order_by("title"))
+    enrolments = list(
+        Enrolment.objects.filter(course=course)
+        .select_related("student", "student__profile")
+        .order_by("student__username")
+    )
+    grades = (
+        Grade.objects.filter(course=course, assignment__in=assignments)
+        .select_related("student", "assignment")
+    )
+    grade_rows = {}
+    for g in grades:
+        row = grade_rows.setdefault(g.student_id, {})
+        row[g.assignment_id] = g
+    # Compute course percent per student using Grades
+    per_student_pct: dict[int, float] = {}
+    for e in enrolments:
+        per_student_pct[e.student_id] = compute_course_percentage(course, e.student)
+    return render(
+        request,
+        "courses/gradebook.html",
+        {
+            "course": course,
+            "assignments": assignments,
+            "enrolments": enrolments,
+            "grade_rows": grade_rows,
+            "course_pct": per_student_pct,
+        },
+    )
+
+
+@login_required
+@role_required(Role.TEACHER)
+def course_gradebook_csv(request: HttpRequest, pk: int) -> HttpResponse:
+    """CSV export for gradebook: username, S-ID, each assignment X/Y, course %.
+    """
+    course = get_object_or_404(Course, pk=pk)
+    if not course.is_owner(request.user):
+        raise PermissionDenied
+    assignments = list(Assignment.objects.filter(course=course, is_published=True).order_by("title"))
+    enrolments = list(
+        Enrolment.objects.filter(course=course)
+        .select_related("student", "student__profile")
+        .order_by("student__username")
+    )
+    grades = (
+        Grade.objects.filter(course=course, assignment__in=assignments)
+        .select_related("student", "assignment")
+    )
+    grade_map: dict[tuple[int, int], Grade] = {(g.student_id, g.assignment_id): g for g in grades}
+
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f"attachment; filename=gradebook_course_{course.id}.csv"
+    writer = csv.writer(resp)
+    header = ["username", "S-ID"] + [a.title for a in assignments] + ["course %"]
+    writer.writerow(header)
+    for e in enrolments:
+        sid = getattr(getattr(e.student, "profile", None), "student_number", None)
+        sid_val = sid if sid else f"S{e.student.id:07d}"
+        row = [e.student.username, sid_val]
+        for a in assignments:
+            g = grade_map.get((e.student_id, a.id))
+            if g:
+                ach = int(g.achieved_marks) if float(g.achieved_marks or 0).is_integer() else g.achieved_marks
+                mx = int(g.max_marks) if float(g.max_marks or 0).is_integer() else g.max_marks
+                row.append(f"{ach}/{mx}")
+            else:
+                row.append("")
+        pct = compute_course_percentage(course, e.student)
+        row.append(f"{pct:.2f}")
+        writer.writerow(row)
+    return resp
+
+
+@login_required
 @role_required(Role.STUDENT)
 def course_unenrol(request: HttpRequest, pk: int) -> HttpResponse:
     """Student unenrols from a course (owner unaffected)."""
@@ -308,3 +406,9 @@ def course_feedback(request: HttpRequest, pk: int) -> HttpResponse:
         else:
             messages.error(request, "Invalid feedback.")
     return redirect("courses:detail", pk=course.pk)
+
+
+
+
+
+

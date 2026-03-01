@@ -34,6 +34,9 @@ from .forms import (
 from .models import Role
 from activity.forms import StatusForm
 from activity.models import Status
+from courses.models import Enrolment, Course
+from assignments.utils import compute_course_percentage
+from assignments.models import Grade
 
 
 class CourperaLoginView(LoginView):
@@ -159,6 +162,27 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
     else:
         form = ProfileForm(instance=profile, user=request.user)
     return render(request, "accounts/profile.html", {"form": form, "profile_obj": profile})
+
+
+@login_required
+@role_required(Role.STUDENT)
+def student_grades(request: HttpRequest) -> HttpResponse:
+    """Student grades overview across enrolled courses."""
+    enrolments = (
+        Enrolment.objects.filter(student=request.user)
+        .select_related("course", "course__owner")
+        .order_by("course__title")
+    )
+    rows = []
+    for e in enrolments:
+        pct = compute_course_percentage(e.course, request.user)
+        grades = (
+            Grade.objects.filter(course=e.course, student=request.user, assignment__is_published=True)
+            .select_related("assignment")
+            .order_by("assignment__title")
+        )
+        rows.append({"course": e.course, "percent": pct, "grades": grades})
+    return render(request, "accounts/grades.html", {"rows": rows})
 
 
 class CourperaPasswordChangeView(PasswordChangeView):
